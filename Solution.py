@@ -104,14 +104,58 @@ def createTables():
 
 
 def clearTables():
-    pass
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = """
+           DELETE FROM files;   
+           DELETE FROM disks;
+           DELETE FROM rams;
+           """
+        conn.execute(query)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def dropTables():
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = """
+               DROP TABLE files;   
+               DROP TABLE disks;
+               DROP TABLE rams;
+               DROP TABLE saved_files;
+               DROP TABLE disks_ram_enhanced;
+               DROP VIEW saved_files_file_details;
+               DROP VIEW saved_files_disk_details;
+               DROP VIEW disks_ram_enhanced_ram_details;
+               DROP VIEW disks_ram_enhanced_disk_details;
+               """
+        conn.execute(query)
+        conn.commit()
+    finally:
+        conn.close()
     pass
 
 
 def addFile(file: File) -> Status:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("INSERT INTO files(id,type,size) VALUES({id},{type},{size})").format(id=sql.Literal(file.getFileID()), type=sql.Literal(file.getType()), size=sql.Literal(file.getSize()))
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException.CHECK_VIOLATION as e:
+        return Status.BAD_PARAMS
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        return Status.ALREADY_EXISTS
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
@@ -120,18 +164,60 @@ def getFileByID(fileID: int) -> File:
 
 
 def deleteFile(file: File) -> Status:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "DELETE FROM files(id) WHERE fileID = {id}").format(id=sql.Literal(file.getFileID()))
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
 def addDisk(disk: Disk) -> Status:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "INSERT INTO disks(id,company,speed,freeSpace,cost) VALUES({id},{company},{speed},{freeSpace},{cost})").format(id=sql.Literal(disk.getDiskID()), company=sql.Literal(disk.getCompany()), speed=sql.Literal(disk.getSpeed()), freeSpace=sql.Literal(disk.getFreeSpace()))
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException.CHECK_VIOLATION as e:
+        return Status.BAD_PARAMS
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        return Status.ALREADY_EXISTS
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
 def getDiskByID(diskID: int) -> Disk:
     return Disk()
 
+#   query = sql.SQL("INSERT INTO Users(id, name) VALUES({id}, {username})").format(id=sql.Literal(ID)
+#   username=sql.Literal(name))
+
 
 def deleteDisk(diskID: int) -> Status:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("DELETE FROM disks(id) WHERE diskID = {id}").format(id=sql.Literal(diskID))
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
