@@ -175,7 +175,7 @@ def getFileByID(fileID: int) -> File:
         conn.close()
     if result == 0:
         return File.badFile()
-    return result    # not sure about this
+    return result  # not sure about this
 
 
 def deleteFile(file: File) -> Status:
@@ -233,7 +233,7 @@ def getDiskByID(diskID: int) -> Disk:
         conn.close()
     if result == 0:
         return Disk.badDisk()
-    return result   # not sure about this
+    return result  # not sure about this
 
 
 # not sure about this
@@ -315,9 +315,30 @@ def deleteRAM(ramID: int) -> Status:
     return Status.OK
 
 
+# add using query: file , then disk (assume they aren't exist)
+# catch errors with rollback.
+
+
 def addDiskAndFile(disk: Disk, file: File) -> Status:
-    # add using query: file , then disk (assume they aren't exist)
-    # catch errors with rollback.
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "INSERT INTO disks(id,company,speed,freeSpace,cost) VALUES({id},{company},{speed},{freeSpace},{cost})"
+            "INSERT INTO files(fId,fType,fSize) VALUES({fId},{fType},{fSize})").format(
+            id=sql.Literal(disk.getDiskID()), company=sql.Literal(disk.getCompany()),
+            speed=sql.Literal(disk.getSpeed()), freeSpace=sql.Literal(disk.getFreeSpace()),  fId=sql.Literal(file.getFileID()), fType=sql.Literal(file.getType()), fSize=sql.Literal(file.getSize()))
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        conn.rollback()
+        return Status.ALREADY_EXISTS
+    except Exception as e:
+        conn.rollback()
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
