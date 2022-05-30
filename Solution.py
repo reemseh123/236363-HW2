@@ -7,6 +7,7 @@ from Business.RAM import RAM
 from Business.Disk import Disk
 from psycopg2 import sql
 
+
 # disks_ram_enhanced = pairs of (ram.id,disk.id)
 # saved_files = pairs of (file.id,disk.id)
 # saved_files_file_details = details of saved files only
@@ -144,7 +145,8 @@ def addFile(file: File) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("INSERT INTO files(id,type,size) VALUES({id},{type},{size})").format(id=sql.Literal(file.getFileID()), type=sql.Literal(file.getType()), size=sql.Literal(file.getSize()))
+        query = sql.SQL("INSERT INTO files(id,type,size) VALUES({id},{type},{size})").format(
+            id=sql.Literal(file.getFileID()), type=sql.Literal(file.getType()), size=sql.Literal(file.getSize()))
         conn.execute(query)
         conn.commit()
     except DatabaseException.CHECK_VIOLATION as e:
@@ -164,8 +166,7 @@ def getFileByID(fileID: int) -> File:
     result = 0
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("SELECT FROM files(id) fileID = {id}").format(id=sql.Literal(fileID))
-        rows_effected, result = conn.execute(query)
+        query = sql.SQL("SELECT * FROM files where fileID = id").format(id=sql.Literal(fileID))
         conn.commit()
     except DatabaseException as e:
         return File.badFile()
@@ -174,7 +175,7 @@ def getFileByID(fileID: int) -> File:
         conn.close()
     if result == 0:
         return File.badFile()
-    return result
+    return result    # not sure about this
 
 
 def deleteFile(file: File) -> Status:
@@ -182,8 +183,8 @@ def deleteFile(file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM files(id) WHERE fileID = {id}").format(id=sql.Literal(file.getFileID()))
-        rows_effected = conn.execute(query)
+            "DELETE FROM files WHERE fileID=id").format(id=sql.Literal(file.getFileID()))
+        rows_effected, _ = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
         return Status.ERROR
@@ -200,7 +201,9 @@ def addDisk(disk: Disk) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "INSERT INTO disks(id,company,speed,freeSpace,cost) VALUES({id},{company},{speed},{freeSpace},{cost})").format(id=sql.Literal(disk.getDiskID()), company=sql.Literal(disk.getCompany()), speed=sql.Literal(disk.getSpeed()), freeSpace=sql.Literal(disk.getFreeSpace()))
+            "INSERT INTO disks(id,company,speed,freeSpace,cost) VALUES({id},{company},{speed},{freeSpace},{cost})").format(
+            id=sql.Literal(disk.getDiskID()), company=sql.Literal(disk.getCompany()),
+            speed=sql.Literal(disk.getSpeed()), freeSpace=sql.Literal(disk.getFreeSpace()))
         conn.execute(query)
         conn.commit()
     except DatabaseException.CHECK_VIOLATION as e:
@@ -216,12 +219,28 @@ def addDisk(disk: Disk) -> Status:
 
 
 def getDiskByID(diskID: int) -> Disk:
-    return Disk()
+    conn = None
+    result = 0
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("SELECT * FROM disks where diskID = id").format(id=sql.Literal(diskID))
+        rows_effected, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Disk.badDisk()
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    if result == 0:
+        return Disk.badDisk()
+    return result   # not sure about this
 
+
+# not sure about this
 #   query = sql.SQL("INSERT INTO Users(id, name) VALUES({id}, {username})").format(id=sql.Literal(ID)
 #   username=sql.Literal(name))
 
-#query = sql.SQL("DELETE FROM disks WHERE diskID = {0}").format(id=sql.Literal(diskID))#
+# query = sql.SQL("DELETE FROM disks WHERE diskID = {0}").format(id=sql.Literal(diskID))#
 
 
 def deleteDisk(diskID: int) -> Status:
@@ -262,7 +281,21 @@ def addRAM(ram: RAM) -> Status:
 
 
 def getRAMByID(ramID: int) -> RAM:
-    return RAM()
+    conn = None
+    result = 0
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("SELECT * FROM rams where ramID = id").format(id=sql.Literal(ramID))
+        rows_effected, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return RAM.badRAM()
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    if result == 0:
+        return RAM.badRAM()
+    return result  # not sure about this
 
 
 def deleteRAM(ramID: int) -> Status:
@@ -393,7 +426,7 @@ def getCloseFiles(fileID: int) -> List[int]:
     # now we have table with files saved on the relevant disks.
     # group by file_id aggregate COUNT disk_id. = call it relevant_disks_count
 
-   ##############################################
+    ##############################################
     # join relevant_disks_count with files on file id, project only file_id, countOFDisks.
     # convert NULLs to zeroes
     # order by ID
