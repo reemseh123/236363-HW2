@@ -160,7 +160,21 @@ def addFile(file: File) -> Status:
 
 
 def getFileByID(fileID: int) -> File:
-    return File()
+    conn = None
+    result = 0
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("SELECT FROM files(id) fileID = {id}").format(id=sql.Literal(fileID))
+        rows_effected, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return File.badFile()
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    if result == 0:
+        return File.badFile()
+    return result
 
 
 def deleteFile(file: File) -> Status:
@@ -169,13 +183,15 @@ def deleteFile(file: File) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             "DELETE FROM files(id) WHERE fileID = {id}").format(id=sql.Literal(file.getFileID()))
-        conn.execute(query)
+        rows_effected = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
+    if rows_effected == 0:
+        return Status.NOT_EXISTS
     return Status.OK
 
 
@@ -205,14 +221,38 @@ def getDiskByID(diskID: int) -> Disk:
 #   query = sql.SQL("INSERT INTO Users(id, name) VALUES({id}, {username})").format(id=sql.Literal(ID)
 #   username=sql.Literal(name))
 
+#query = sql.SQL("DELETE FROM disks WHERE diskID = {0}").format(id=sql.Literal(diskID))#
+
 
 def deleteDisk(diskID: int) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
         query = sql.SQL("DELETE FROM disks(id) WHERE diskID = {id}").format(id=sql.Literal(diskID))
+        rows_effected = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    if rows_effected == 0:
+        return Status.NOT_EXISTS
+    return Status.OK
+
+
+def addRAM(ram: RAM) -> Status:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("INSERT INTO rams(id,company,size) VALUES({id},{company},{size})").format(
+            id=sql.Literal(ram.getRamID()), company=sql.Literal(ram.getCompany()), size=ram.getSize())
         conn.execute(query)
         conn.commit()
+    except DatabaseException.CHECK_VIOLATION as e:
+        return Status.BAD_PARAMS
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        return Status.ALREADY_EXISTS
     except DatabaseException as e:
         return Status.ERROR
     finally:
@@ -221,15 +261,24 @@ def deleteDisk(diskID: int) -> Status:
     return Status.OK
 
 
-def addRAM(ram: RAM) -> Status:
-    return Status.OK
-
-
 def getRAMByID(ramID: int) -> RAM:
     return RAM()
 
 
 def deleteRAM(ramID: int) -> Status:
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL("DELETE FROM rams(id) WHERE ramID = {id}").format(id=sql.Literal(ramID))
+        rows_effected = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    if rows_effected == 0:
+        return Status.NOT_EXISTS
     return Status.OK
 
 
