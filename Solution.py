@@ -186,7 +186,7 @@ def getFileByID(fileID: int) -> File:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM files where fileID = id"
+            "SELECT * FROM files where file_id = {id}"
         ).format(id=sql.Literal(fileID))
         conn.commit()
     except DatabaseException as e:
@@ -208,7 +208,7 @@ def deleteFile(file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM files WHERE fileID=id"
+            "DELETE FROM files WHERE file_id={id}"
         ).format(
             id=sql.Literal(file.getFileID())
         )
@@ -259,7 +259,7 @@ def getDiskByID(diskID: int) -> Disk:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM disks where diskID = id").format(id=sql.Literal(diskID))
+            "SELECT * FROM disks where disk_id = {id}").format(id=sql.Literal(diskID))
         rows_effected, result = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -290,7 +290,7 @@ def deleteDisk(diskID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM disks(id) WHERE diskID = {id}"
+            "DELETE FROM disks(id) WHERE disk_id = {id}"
         ).format(
             id=sql.Literal(diskID)
         )
@@ -337,7 +337,7 @@ def getRAMByID(ramID: int) -> RAM:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM rams where ramID = id").format(id=sql.Literal(ramID))
+            "SELECT * FROM rams where ram_id={id}").format(id=sql.Literal(ramID))
         rows_effected, result = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -359,7 +359,7 @@ def deleteRAM(ramID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM rams(id) WHERE ramID = {id}"
+            "DELETE FROM rams WHERE ram_id={id}"
         ).format(
             id=sql.Literal(ramID)
         )
@@ -412,11 +412,45 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
         conn.close()
     return Status.OK
 
+# saved_files = pairs of (file.id,disk.id)\ **not sure if this the way to sub the size**
+# SUB files.size FROM disks.free_space WHERE disk_id = dId
+
 
 def addFileToDisk(file: File, diskID: int) -> Status:
     # Insert into saved_files.(FK violation , UNIQUE violation)
     # update free space. (CHECK violation)
     # catch errors with rollback.
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            """
+            INSERT INTO saved_files(fId,dId) 
+            VALUES({fId},{dId});
+            UPDATE disks SET free_space=(free_space SUB {size}) WHERE disk_id = dId
+            """
+        ).format(
+            fId=sql.Literal(file.getFileID()),
+            dId=sql.Literal(diskID),
+            size=sql.Literal(file.getSize())
+        )
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException.FOREIGN_KEY_VIOLATION as e:
+        conn.rollback()
+        return Status.NOT_EXISTS
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        conn.rollback()
+        return Status.ALREADY_EXISTS
+    except DatabaseException.CHECK_VIOLATION as e:
+        conn.rollback()
+        return Status.BAD_PARAMS
+    except DatabaseException as e:
+        conn.rollback()
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
@@ -424,18 +458,78 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
     # remove from saved_files
     # update free space
     # catch errors
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "DELETE FROM saved_files WHERE file_id={fID} AND disk_id = {dID}"
+            "UPDATE disks SET free_space=(free_space SUM {size}) WHERE disk_id=dID"
+        ).format(
+            fID=sql.Literal(file.getFileID()),
+            dID=sql.Literal(diskID),
+            size=sql.Literal(file.getSize())
+        )
+        rows_effected, _ = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return Status.OK
 
 
 def addRAMToDisk(ramID: int, diskID: int) -> Status:
     # Insert into disks_ram_enhanced
     # catch errors
-    return Status.OK
+        conn = None
+        try:
+            conn = Connector.DBConnector()
+            query = sql.SQL(
+                """
+                INSERT INTO disks_ram_enhanced(rID,dID) 
+                VALUES({rID},{did})
+                """
+            ).format(
+                rID=sql.Literal(ramID),
+                dID=sql.Literal(diskID)
+            )
+            conn.execute(query)
+            conn.commit()
+        except DatabaseException.FOREIGN_KEY_VIOLATION as e:
+            return Status.NOT_EXISTS
+        except DatabaseException.UNIQUE_VIOLATION as e:
+            return Status.ALREADY_EXISTS
+        except DatabaseException as e:
+            return Status.ERROR
+        finally:
+            # will happen any way after try termination or exception handling
+            conn.close()
+        return Status.OK
+
 
 
 def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
     # remove from disks_ram_enhanced
     # catch errors
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "DELETE FROM disks_ram_enhanced WHERE ram_id={rID} AND disk_id={dID}"
+        ).format(
+            rID=sql.Literal(ramID),
+            dID=sql.Literal(diskID)
+        )
+        rows_effected, _ = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    if rows_effected == 0:
+        return Status.NOT_EXISTS
     return Status.OK
 
 
