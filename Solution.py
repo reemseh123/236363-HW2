@@ -187,7 +187,11 @@ def getFileByID(fileID: int) -> File:
         conn.close()
     if result == 0:
         return File.badFile()
-    return result  # not sure about this
+    return mapToFile(
+        result[0]["file_id"],
+        result[0]["type"],
+        result[0]["size"],
+    )
 
 
 def deleteFile(file: File) -> Status:
@@ -246,7 +250,13 @@ def getDiskByID(diskID: int) -> Disk:
         conn.close()
     if result == 0:
         return Disk.badDisk()
-    return result  # not sure about this
+    return mapToDisk(
+        result[0]["disk_id"],
+        result[0]["manufacturing_company"],
+        result[0]["speed"],
+        result[0]["free_space"],
+        result[0]["free_spcost_per_byteace"],
+    )
 
 
 # not sure about this
@@ -310,7 +320,11 @@ def getRAMByID(ramID: int) -> RAM:
         conn.close()
     if result == 0:
         return RAM.badRAM()
-    return result  # not sure about this
+    return mapToRam(
+        result[0]["ram_id"],
+        result[0]["company"],
+        result[0]["size"],
+    )
 
 
 def deleteRAM(ramID: int) -> Status:
