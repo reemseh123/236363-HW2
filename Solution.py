@@ -1,3 +1,4 @@
+from math import fabs
 from typing import List
 import hw2_spring2022.Utility.DBConnector as Connector
 from hw2_spring2022.Utility.Status import Status
@@ -95,6 +96,13 @@ def createTables():
         FROM disks_ram_enhanced 
         INNER JOIN disks 
         ON disks_ram_enhanced.disk_id = disks.disk_id;
+        
+        CREATE VIEW rams_And_Disks_Details AS 
+        SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company
+        FROM disks_ram_enhanced_ram_details rDetails
+        JOIN disks_ram_enhanced_disk_details dDetails
+        ON rDetails.ram_id = dDetails.ram_id 
+        AND rDetails.disk_id = dDetails.disk_id ;
         """
         conn.execute(query)
         conn.commit()
@@ -138,6 +146,7 @@ def dropTables():
                         "DROP VIEW saved_files_disk_details;"
                         "DROP VIEW disks_ram_enhanced_ram_details;"
                         "DROP VIEW disks_ram_enhanced_disk_details;"
+                        "DROP VIEW rams_And_Disks_Details;"
                         "DROP TABLE disks_ram_enhanced;"
                         "DROP TABLE saved_files;"
                         "DROP TABLE files;"
@@ -457,21 +466,22 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
+            "SELECT * FROM saved_files where file_id={fID} AND disk_id={dID};"
+            "UPDATE disks SET free_space=(free_space+{size}) WHERE disk_id={dID};"
             "DELETE FROM saved_files WHERE file_id={fID} AND disk_id={dID};"
-            "UPDATE disks SET free_space=(free_space+{size}) WHERE disk_id={dID}"
         ).format(
             fID=sql.Literal(file.getFileID()),
             dID=sql.Literal(diskID),
             size=sql.Literal(file.getSize())
         )
-        rows_effected, _ = conn.execute(query)
-        conn.commit()
+        rows_effected, rows = conn.execute(query)
+        if rows_effected < 1:
+            conn.rollback()
+        else: conn.commit()
     except DatabaseException as e:
         conn.rollback()
         conn.close()
         return Status.ERROR
-    if (rows_effected==1) or (rows_effected==0):
-        conn.rollback()
     conn.close()
     return Status.OK
 
@@ -540,19 +550,21 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT COALESCE(AVG(size),0) as size_avg"
+            "SELECT COALESCE(AVG(files.size),0) as size_avg"
             "FROM saved_files_file_details "
             "WHERE disk_id={dID}"
         ).format(
             dID=sql.Literal(diskID)
         )
-        _, result = conn.execute(query)
+        rows_affected, result = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
         return -1
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
+    if result[0]["size_avg"] is None:
+        return 0
     return result[0]["size_avg"]
 
 
@@ -673,15 +685,32 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
     # something like return [next(iter(row)) for row in result.rows]
     return result
 
-
-def isCompanyExclusive(diskID: int) -> bool:
+ def isCompanyExclusive(diskID: int) -> bool:
     # join the Ram VIEWS (SAME AS FILES VIEWS)
     #  where this disk_id
     # SELECT * ... where manufacturing_company != company
     # if the length of the result is zero then true.
     # WARNING : check the empty case
-    # means when no rams associated with the disk.
-    return True
+    # means when no rams associated with the disk.(should return true)
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "SELECT * "
+            "FROM rams_And_Disks_Details "
+            "WHERE disk_id = {dID} "
+            "WHERE ram_company != disk_company"
+        ).format(
+            dID=sql.Literal(diskID)
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return False
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    return result.isEmpty()
 
 
 def getConflictingDisks() -> List[int]:
