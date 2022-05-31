@@ -15,6 +15,17 @@ from psycopg2 import sql
 # disks_ram_enhanced_ram_details =
 # disks_ram_enhanced_disk_details =
 
+def mapToFile(fileID: int, type: str, size: int) -> File:
+    return File(fileID, type, size)
+
+
+def mapToRam(ramID: int, company: str, size: int) -> RAM:
+    return RAM(ramID, company, size)
+
+
+def mapToDisk(diskID: int, company: str, speed: int, free_space: int, cost: int) -> Disk:
+    return Disk(diskID, company, speed, free_space, cost)
+
 
 def createTables():
     conn = None
@@ -166,7 +177,8 @@ def getFileByID(fileID: int) -> File:
     result = 0
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("SELECT * FROM files where fileID = id").format(id=sql.Literal(fileID))
+        query = sql.SQL(
+            "SELECT * FROM files where fileID = id").format(id=sql.Literal(fileID))
         conn.commit()
     except DatabaseException as e:
         return File.badFile()
@@ -223,7 +235,8 @@ def getDiskByID(diskID: int) -> Disk:
     result = 0
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("SELECT * FROM disks where diskID = id").format(id=sql.Literal(diskID))
+        query = sql.SQL(
+            "SELECT * FROM disks where diskID = id").format(id=sql.Literal(diskID))
         rows_effected, result = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -247,7 +260,8 @@ def deleteDisk(diskID: int) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("DELETE FROM disks(id) WHERE diskID = {id}").format(id=sql.Literal(diskID))
+        query = sql.SQL("DELETE FROM disks(id) WHERE diskID = {id}").format(
+            id=sql.Literal(diskID))
         rows_effected = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -285,7 +299,8 @@ def getRAMByID(ramID: int) -> RAM:
     result = 0
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("SELECT * FROM rams where ramID = id").format(id=sql.Literal(ramID))
+        query = sql.SQL(
+            "SELECT * FROM rams where ramID = id").format(id=sql.Literal(ramID))
         rows_effected, result = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -302,7 +317,8 @@ def deleteRAM(ramID: int) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("DELETE FROM rams(id) WHERE ramID = {id}").format(id=sql.Literal(ramID))
+        query = sql.SQL("DELETE FROM rams(id) WHERE ramID = {id}").format(
+            id=sql.Literal(ramID))
         rows_effected = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
