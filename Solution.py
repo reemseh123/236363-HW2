@@ -33,76 +33,76 @@ def createTables():
     try:
         conn = Connector.DBConnector()
         query = """
-        CREATE TABLE files(
-            file_id INTEGER PRIMARY KEY CHECK (file_id > 0),
-            type TEXT NOT NULL,
-            size INTEGER NOT NULL CHECK (size >= 0)
-         );
-        CREATE TABLE disks(
-            disk_id INTEGER PRIMARY KEY CHECK (disk_id > 0),
-            manufacturing_company TEXT NOT NULL,
-            speed INTEGER NOT NULL CHECK (speed > 0),
-            free_space INTEGER NOT NULL CHECK (free_space >= 0),
-            cost_per_byte INTEGER NOT NULL CHECK (cost_per_byte > 0)
-         );
-        CREATE TABLE rams(
-            ram_id INTEGER PRIMARY KEY CHECK (ram_id > 0),
-            company TEXT NOT NULL,
-            size INTEGER NOT NULL CHECK (size > 0)
-         );
-        CREATE TABLE saved_files(
-            file_id INTEGER,
-            disk_id INTEGER,
-            FOREIGN KEY (file_id) 
-            REFERENCES files(file_id) 
-            ON DELETE CASCADE, 
-            FOREIGN KEY (disk_id) 
-            REFERENCES disks(disk_id) 
-            ON DELETE CASCADE,
-            PRIMARY KEY(file_id, disk_id)
-        );
-        CREATE TABLE disks_ram_enhanced(
-            ram_id INTEGER,
-            disk_id INTEGER,
-            FOREIGN KEY (ram_id) 
-            REFERENCES rams(ram_id) 
-            ON DELETE CASCADE, 
-            FOREIGN KEY (disk_id) 
-            REFERENCES disks(disk_id) 
-            ON DELETE CASCADE,
-            PRIMARY KEY(ram_id, disk_id)
-        );
-
-        CREATE VIEW saved_files_file_details AS 
-        SELECT saved_files.disk_id, files.* 
-        FROM saved_files 
-        INNER JOIN files 
-        ON saved_files.file_id = files.file_id;
-
-        CREATE VIEW saved_files_disk_details AS 
-        SELECT saved_files.file_id, disks.* 
-        FROM saved_files 
-        INNER JOIN disks 
-        ON saved_files.disk_id = disks.disk_id;
-
-        CREATE VIEW disks_ram_enhanced_ram_details AS 
-        SELECT disks_ram_enhanced.disk_id, rams.* 
-        FROM disks_ram_enhanced 
-        INNER JOIN rams 
-        ON disks_ram_enhanced.ram_id = rams.ram_id;
-
-        CREATE VIEW disks_ram_enhanced_disk_details AS 
-        SELECT disks_ram_enhanced.ram_id, disks.* 
-        FROM disks_ram_enhanced 
-        INNER JOIN disks 
-        ON disks_ram_enhanced.disk_id = disks.disk_id;
-        
-        CREATE VIEW rams_And_Disks_Details AS 
-        SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company
-        FROM disks_ram_enhanced_ram_details rDetails
-        JOIN disks_ram_enhanced_disk_details dDetails
-        ON rDetails.ram_id = dDetails.ram_id 
-        AND rDetails.disk_id = dDetails.disk_id ;
+                CREATE TABLE files(
+                    file_id INTEGER PRIMARY KEY CHECK (file_id > 0),
+                    type TEXT NOT NULL,
+                    size INTEGER NOT NULL CHECK (size >= 0)
+                 );
+                CREATE TABLE disks(
+                    disk_id INTEGER PRIMARY KEY CHECK (disk_id > 0),
+                    manufacturing_company TEXT NOT NULL,
+                    speed INTEGER NOT NULL CHECK (speed > 0),
+                    free_space INTEGER NOT NULL CHECK (free_space >= 0),
+                    cost_per_byte INTEGER NOT NULL CHECK (cost_per_byte > 0)
+                 );
+                CREATE TABLE rams(
+                    ram_id INTEGER PRIMARY KEY CHECK (ram_id > 0),
+                    company TEXT NOT NULL,
+                    size INTEGER NOT NULL CHECK (size > 0)
+                 );
+                CREATE TABLE saved_files(
+                    file_id INTEGER,
+                    disk_id INTEGER,
+                    FOREIGN KEY (file_id) 
+                    REFERENCES files(file_id) 
+                    ON DELETE CASCADE, 
+                    FOREIGN KEY (disk_id) 
+                    REFERENCES disks(disk_id) 
+                    ON DELETE CASCADE,
+                    PRIMARY KEY(file_id, disk_id)
+                );
+                CREATE TABLE disks_ram_enhanced(
+                    ram_id INTEGER,
+                    disk_id INTEGER,
+                    FOREIGN KEY (ram_id) 
+                    REFERENCES rams(ram_id) 
+                    ON DELETE CASCADE, 
+                    FOREIGN KEY (disk_id) 
+                    REFERENCES disks(disk_id) 
+                    ON DELETE CASCADE,
+                    PRIMARY KEY(ram_id, disk_id)
+                );
+                
+                CREATE VIEW saved_files_file_details AS 
+                SELECT saved_files.disk_id, files.* 
+                FROM saved_files 
+                INNER JOIN files 
+                ON saved_files.file_id = files.file_id;
+                
+                CREATE VIEW saved_files_disk_details AS 
+                SELECT saved_files.file_id, disks.* 
+                FROM saved_files 
+                INNER JOIN disks 
+                ON saved_files.disk_id = disks.disk_id;
+                
+                CREATE VIEW disks_ram_enhanced_ram_details AS 
+                SELECT disks_ram_enhanced.disk_id, rams.* 
+                FROM disks_ram_enhanced 
+                INNER JOIN rams 
+                ON disks_ram_enhanced.ram_id = rams.ram_id;
+                
+                CREATE VIEW disks_ram_enhanced_disk_details AS 
+                SELECT disks_ram_enhanced.ram_id, disks.* 
+                FROM disks_ram_enhanced 
+                INNER JOIN disks 
+                ON disks_ram_enhanced.disk_id = disks.disk_id;
+                
+                CREATE VIEW rams_And_Disks_Details AS 
+                SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company
+                FROM disks_ram_enhanced_ram_details rDetails
+                JOIN disks_ram_enhanced_disk_details dDetails
+                ON rDetails.ram_id = dDetails.ram_id 
+                AND rDetails.disk_id = dDetails.disk_id ;
         """
         conn.execute(query)
         conn.commit()
@@ -128,10 +128,10 @@ def clearTables():
     try:
         conn = Connector.DBConnector()
         query = """
-           DELETE FROM files;   
-           DELETE FROM disks;
-           DELETE FROM rams;
-           """
+        DELETE FROM files;   
+        DELETE FROM disks;
+        DELETE FROM rams;
+        """
         conn.execute(query)
         conn.commit()
     finally:
@@ -142,17 +142,18 @@ def dropTables():
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("DROP VIEW saved_files_file_details;"
-                        "DROP VIEW saved_files_disk_details;"
-                        "DROP VIEW disks_ram_enhanced_ram_details;"
-                        "DROP VIEW disks_ram_enhanced_disk_details;"
-                        "DROP VIEW rams_And_Disks_Details;"
-                        "DROP TABLE disks_ram_enhanced;"
-                        "DROP TABLE saved_files;"
-                        "DROP TABLE files;"
-                        "DROP TABLE disks;"
-                        "DROP TABLE rams;"
-                        )
+        query = """
+                        DROP VIEW saved_files_file_details;
+                        DROP VIEW saved_files_disk_details;
+                        DROP VIEW rams_And_Disks_Details;
+                        DROP VIEW disks_ram_enhanced_ram_details;
+                        DROP VIEW disks_ram_enhanced_disk_details;
+                        DROP TABLE disks_ram_enhanced;
+                        DROP TABLE saved_files;
+                        DROP TABLE files;
+                        DROP TABLE disks;
+                        DROP TABLE rams;
+                        """
         conn.execute(query)
         conn.commit()
     finally:
@@ -166,8 +167,8 @@ def addFile(file: File) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            INSERT INTO files(file_id,type,size) 
-            VALUES({id},{type},{size})
+                INSERT INTO files(file_id,type,size) 
+                VALUES({id},{type},{size})
             """
         ).format(
             id=sql.Literal(file.getFileID()),
@@ -236,7 +237,7 @@ def addDisk(disk: Disk) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL("INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte)"
-                        " VALUES({id},{company},{speed},{freeSpace},{cost})")\
+                        " VALUES({id},{company},{speed},{freeSpace},{cost})") \
             .format(
             id=sql.Literal(disk.getDiskID()),
             company=sql.Literal(disk.getCompany()),
@@ -260,7 +261,6 @@ def addDisk(disk: Disk) -> Status:
 
 def getDiskByID(diskID: int) -> Disk:
     conn = None
-    result = 0
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
@@ -391,7 +391,7 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
         query = sql.SQL(
             "INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte)"
             "VALUES({id},{company},{speed},{freeSpace},{cost});"
-            "INSERT INTO files(file_id,type,size)" 
+            "INSERT INTO files(file_id,type,size)"
             "VALUES({fId},{fType},{fSize});"
         ).format(
             id=sql.Literal(disk.getDiskID()),
@@ -416,6 +416,7 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
         conn.close()
     return Status.OK
 
+
 # saved_files = pairs of (file.id,disk.id)\ **not sure if this the way to sub the size**
 # SUB files.size FROM disks.free_space WHERE disk_id = dId
 
@@ -429,9 +430,9 @@ def addFileToDisk(file: File, diskID: int) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            INSERT INTO saved_files(file_id,disk_id) 
-            VALUES({fId},{dId});
-            UPDATE disks SET free_space=(free_space-{size}) WHERE disk_id={dId};
+                    INSERT INTO saved_files(file_id,disk_id) 
+                    VALUES({fId},{dId});
+                    UPDATE disks SET free_space=(free_space-{size}) WHERE disk_id={dId};
             """
         ).format(
             fId=sql.Literal(file.getFileID()),
@@ -477,7 +478,8 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
         rows_effected, rows = conn.execute(query)
         if rows_effected < 1:
             conn.rollback()
-        else: conn.commit()
+        else:
+            conn.commit()
     except DatabaseException as e:
         conn.rollback()
         conn.close()
@@ -489,31 +491,29 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
 def addRAMToDisk(ramID: int, diskID: int) -> Status:
     # Insert into disks_ram_enhanced
     # catch errors
-        conn = None
-        try:
-            conn = Connector.DBConnector()
-            query = sql.SQL(
-                """
-                INSERT INTO disks_ram_enhanced(ram_id,disk_id) 
-                VALUES({rID},{dID})
-                """
-            ).format(
-                rID=sql.Literal(ramID),
-                dID=sql.Literal(diskID)
-            )
-            conn.execute(query)
-            conn.commit()
-        except DatabaseException.FOREIGN_KEY_VIOLATION as e:
-            return Status.NOT_EXISTS
-        except DatabaseException.UNIQUE_VIOLATION as e:
-            return Status.ALREADY_EXISTS
-        except DatabaseException as e:
-            return Status.ERROR
-        finally:
-            # will happen any way after try termination or exception handling
-            conn.close()
-        return Status.OK
-
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            """
+                    INSERT INTO disks_ram_enhanced(ram_id,disk_id) 
+                    VALUES({rID},{dID})
+            """
+        ).format(
+            rID=sql.Literal(ramID),
+            dID=sql.Literal(diskID)
+        )
+        conn.execute(query)
+        conn.commit()
+    except DatabaseException.FOREIGN_KEY_VIOLATION as e:
+        return Status.NOT_EXISTS
+    except DatabaseException.UNIQUE_VIOLATION as e:
+        return Status.ALREADY_EXISTS
+    except DatabaseException as e:
+        return Status.ERROR
+    finally:
+        conn.close()
+    return Status.OK
 
 
 def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
@@ -540,7 +540,6 @@ def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
     return Status.OK
 
 
-
 def averageFileSizeOnDisk(diskID: int) -> float:
     # use the view saved_files_file_details
     # where this diskID.
@@ -550,7 +549,7 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT COALESCE(AVG(files.size),0) as size_avg"
+            "SELECT COALESCE(AVG(size),0) as size_avg"
             "FROM saved_files_file_details "
             "WHERE disk_id={dID}"
         ).format(
@@ -563,8 +562,6 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    if result[0]["size_avg"] is None:
-        return 0
     return result[0]["size_avg"]
 
 
@@ -681,11 +678,10 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    # need to convert (check the output) (maybe should concatenate result.rows)
-    # something like return [next(iter(row)) for row in result.rows]
-    return result
+    return []
 
- def isCompanyExclusive(diskID: int) -> bool:
+
+def isCompanyExclusive(diskID: int) -> bool:
     # join the Ram VIEWS (SAME AS FILES VIEWS)
     #  where this disk_id
     # SELECT * ... where manufacturing_company != company
