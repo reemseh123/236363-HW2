@@ -1,3 +1,4 @@
+from math import fabs
 from typing import List
 import hw2_spring2022.Utility.DBConnector as Connector
 from hw2_spring2022.Utility.Status import Status
@@ -95,6 +96,13 @@ def createTables():
         FROM disks_ram_enhanced 
         INNER JOIN disks 
         ON disks_ram_enhanced.disk_id = disks.disk_id;
+
+        CREATE VIEW rams_And_Disks_Details AS 
+        SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company
+        FROM disks_ram_enhanced_ram_details rDetails
+        JOIN disks_ram_enhanced_disk_details dDetails
+        ON rDetails.ram_id = dDetails.ram_id 
+        AND rDetails.disk_id = dDetails.disk_id ;
         """
         conn.execute(query)
         conn.commit()
@@ -138,6 +146,7 @@ def dropTables():
                         "DROP VIEW saved_files_disk_details;"
                         "DROP VIEW disks_ram_enhanced_ram_details;"
                         "DROP VIEW disks_ram_enhanced_disk_details;"
+                        "DROP VIEW rams_And_Disks_Details;"
                         "DROP TABLE disks_ram_enhanced;"
                         "DROP TABLE saved_files;"
                         "DROP TABLE files;"
@@ -645,7 +654,33 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
     # where size <= freespace of this disk (sub-query)
     # where size <= sum of... (same sub-query used in the func "diskTotalRAM")
     # LIMIT 5
-    return []
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "SELECT file_id "
+            "FROM files "
+            "WHERE size <= (SELECT free_space FROM disks WHERE disk_id = {dID})"
+            "WHERE size <= ("
+            "SELECT COALESCE(SUM(size),0) as size_sum"
+            "FROM disks_ram_enhanced_ram_details "
+            "WHERE disk_id={dID}"
+            ")"
+            "ORDER BY file_id ASC"
+            "LIMIT 5"
+        ).format(
+            dID=sql.Literal(diskID)
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return []
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    # need to convert (check the output) (maybe should concatenate result.rows)
+    # something like return [next(iter(row)) for row in result.rows]
+    return result
 
 
 def isCompanyExclusive(diskID: int) -> bool:
@@ -654,8 +689,26 @@ def isCompanyExclusive(diskID: int) -> bool:
     # SELECT * ... where manufacturing_company != company
     # if the length of the result is zero then true.
     # WARNING : check the empty case
-    # means when no rams associated with the disk.
-    return True
+    # means when no rams associated with the disk.(should return true)
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "SELECT * "
+            "FROM rams_And_Disks_Details "
+            "WHERE disk_id = {dID} "
+            "WHERE ram_company != disk_company"
+        ).format(
+            dID=sql.Literal(diskID)
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return False
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    return result.isEmpty()
 
 
 def getConflictingDisks() -> List[int]:
