@@ -549,9 +549,11 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT COALESCE(AVG(size),0) as size_avg"
-            "FROM saved_files_file_details "
-            "WHERE disk_id={dID}"
+            """
+            SELECT COALESCE(AVG(size),0) as size_avg
+            FROM saved_files_file_details 
+            WHERE disk_id={dID}
+            """
         ).format(
             dID=sql.Literal(diskID)
         )
