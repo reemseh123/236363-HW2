@@ -612,7 +612,28 @@ def getFilesCanBeAddedToDisk(diskID: int) -> List[int]:
     # FILES ORDERED By SIZE THEN BY ID'S
     # where size <= freespace of this disk (sub-query)
     # LIMIT 5
-    return []
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "SELECT file_id"
+            "FROM files "
+            "WHERE size <= (SELECT free_space FROM disks WHERE disk_id = {dID})"
+            "ORDER BY file_id DESC"
+            "LIMIT 5"
+        ).format(
+            dID=sql.Literal(diskID)
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return []
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    # need to convert (check the output) (maybe should concatenate result.rows)
+    # something like return [next(iter(row)) for row in result.rows]
+    return result
 
 
 def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
