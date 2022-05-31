@@ -1,4 +1,3 @@
-from math import fabs
 from typing import List
 import hw2_spring2022.Utility.DBConnector as Connector
 from hw2_spring2022.Utility.Status import Status
@@ -96,13 +95,6 @@ def createTables():
         FROM disks_ram_enhanced 
         INNER JOIN disks 
         ON disks_ram_enhanced.disk_id = disks.disk_id;
-
-        CREATE VIEW rams_And_Disks_Details AS 
-        SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company
-        FROM disks_ram_enhanced_ram_details rDetails
-        JOIN disks_ram_enhanced_disk_details dDetails
-        ON rDetails.ram_id = dDetails.ram_id 
-        AND rDetails.disk_id = dDetails.disk_id ;
         """
         conn.execute(query)
         conn.commit()
@@ -146,7 +138,6 @@ def dropTables():
                         "DROP VIEW saved_files_disk_details;"
                         "DROP VIEW disks_ram_enhanced_ram_details;"
                         "DROP VIEW disks_ram_enhanced_disk_details;"
-                        "DROP VIEW rams_And_Disks_Details;"
                         "DROP TABLE disks_ram_enhanced;"
                         "DROP TABLE saved_files;"
                         "DROP TABLE files;"
@@ -479,7 +470,7 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
         conn.rollback()
         conn.close()
         return Status.ERROR
-    if rows_effected <= 1:
+    if (rows_effected==1) or (rows_effected==0):
         conn.rollback()
     conn.close()
     return Status.OK
@@ -689,26 +680,8 @@ def isCompanyExclusive(diskID: int) -> bool:
     # SELECT * ... where manufacturing_company != company
     # if the length of the result is zero then true.
     # WARNING : check the empty case
-    # means when no rams associated with the disk.(should return true)
-    conn = None
-    try:
-        conn = Connector.DBConnector()
-        query = sql.SQL(
-            "SELECT * "
-            "FROM rams_And_Disks_Details "
-            "WHERE disk_id = {dID} "
-            "WHERE ram_company != disk_company"
-        ).format(
-            dID=sql.Literal(diskID)
-        )
-        _, result = conn.execute(query)
-        conn.commit()
-    except DatabaseException as e:
-        return False
-    finally:
-        # will happen any way after try termination or exception handling
-        conn.close()
-    return result.isEmpty()
+    # means when no rams associated with the disk.
+    return True
 
 
 def getConflictingDisks() -> List[int]:
