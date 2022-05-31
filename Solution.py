@@ -1,10 +1,10 @@
 from typing import List
-import Utility.DBConnector as Connector
-from Utility.Status import Status
-from Utility.Exceptions import DatabaseException
-from Business.File import File
-from Business.RAM import RAM
-from Business.Disk import Disk
+import hw2_spring2022.Utility.DBConnector as Connector
+from hw2_spring2022.Utility.Status import Status
+from hw2_spring2022.Utility.Exceptions import DatabaseException
+from hw2_spring2022.Business.File import File
+from hw2_spring2022.Business.RAM import RAM
+from hw2_spring2022.Business.Disk import Disk
 from psycopg2 import sql
 
 
@@ -34,7 +34,7 @@ def createTables():
         query = """
         CREATE TABLE files(
             file_id INTEGER PRIMARY KEY CHECK (file_id > 0),
-            file_type TEXT NOT NULL,
+            type TEXT NOT NULL,
             size INTEGER NOT NULL CHECK (size >= 0)
          );
         CREATE TABLE disks(
@@ -185,19 +185,20 @@ def getFileByID(fileID: int) -> File:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM files where file_id = {id}"
+            "SELECT * FROM files where file_id={id}"
         ).format(id=sql.Literal(fileID))
         conn.commit()
+        res, result = conn.execute(query)
     except DatabaseException as e:
         return File.badFile()
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    if result == 0:
+    if res == 0:
         return File.badFile()
     return mapToFile(
         result[0]["file_id"],
-        result[0]["file_type"],
+        result[0]["type"],
         result[0]["size"],
     )
 
@@ -218,8 +219,6 @@ def deleteFile(file: File) -> Status:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    if rows_effected == 0:
-        return Status.NOT_EXISTS
     return Status.OK
 
 
@@ -256,7 +255,7 @@ def getDiskByID(diskID: int) -> Disk:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM disks where disk_id = {id}").format(id=sql.Literal(diskID))
+            "SELECT * FROM disks where disk_id={id}").format(id=sql.Literal(diskID))
         rows_effected, result = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -264,7 +263,7 @@ def getDiskByID(diskID: int) -> Disk:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    if result == 0:
+    if rows_effected == 0:
         return Disk.badDisk()
     return mapToDisk(
         result[0]["disk_id"],
@@ -342,7 +341,7 @@ def getRAMByID(ramID: int) -> RAM:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    if result == 0:
+    if rows_effected == 0:
         return RAM.badRAM()
     return mapToRam(
         result[0]["ram_id"],
@@ -381,17 +380,16 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            """            
-            INSERT INTO disks(id,company,speed,freeSpace,cost) 
-            VALUES({id},{company},{speed},{freeSpace},{cost});
-            INSERT INTO files(fId,fType,fSize) 
-            VALUES({fId},{fType},{fSize})
-            """
+            "INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte)"
+            "VALUES({id},{company},{speed},{freeSpace},{cost});"
+            "INSERT INTO files(file_id,type,size)" 
+            "VALUES({fId},{fType},{fSize});"
         ).format(
             id=sql.Literal(disk.getDiskID()),
             company=sql.Literal(disk.getCompany()),
             speed=sql.Literal(disk.getSpeed()),
             freeSpace=sql.Literal(disk.getFreeSpace()),
+            cost=sql.Literal(disk.getCost()),
             fId=sql.Literal(file.getFileID()),
             fType=sql.Literal(file.getType()),
             fSize=sql.Literal(file.getSize())
@@ -422,9 +420,9 @@ def addFileToDisk(file: File, diskID: int) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            INSERT INTO saved_files(fId,dId) 
+            INSERT INTO saved_files(file_id,disk_id) 
             VALUES({fId},{dId});
-            UPDATE disks SET free_space=(free_space SUB {size}) WHERE disk_id = dId
+            UPDATE disks SET free_space=(free_space-{size}) WHERE disk_id={dId};
             """
         ).format(
             fId=sql.Literal(file.getFileID()),
@@ -459,8 +457,8 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM saved_files WHERE file_id={fID} AND disk_id = {dID}"
-            "UPDATE disks SET free_space=(free_space SUM {size}) WHERE disk_id=dID"
+            "DELETE FROM saved_files WHERE file_id={fID} AND disk_id={dID};"
+            "UPDATE disks SET free_space=(free_space+{size}) WHERE disk_id={dID}"
         ).format(
             fID=sql.Literal(file.getFileID()),
             dID=sql.Literal(diskID),
@@ -469,40 +467,43 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
         rows_effected, _ = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
-        return Status.ERROR
-    finally:
-        # will happen any way after try termination or exception handling
+        conn.rollback()
         conn.close()
+        return Status.ERROR
+    if rows_effected <= 1:
+        conn.rollback()
+    conn.close()
     return Status.OK
 
 
 def addRAMToDisk(ramID: int, diskID: int) -> Status:
     # Insert into disks_ram_enhanced
     # catch errors
-    conn = None
-    try:
-        conn = Connector.DBConnector()
-        query = sql.SQL(
-            """
-                INSERT INTO disks_ram_enhanced(rID,dID) 
-                VALUES({rID},{did})
+        conn = None
+        try:
+            conn = Connector.DBConnector()
+            query = sql.SQL(
                 """
-        ).format(
-            rID=sql.Literal(ramID),
-            dID=sql.Literal(diskID)
-        )
-        conn.execute(query)
-        conn.commit()
-    except DatabaseException.FOREIGN_KEY_VIOLATION as e:
-        return Status.NOT_EXISTS
-    except DatabaseException.UNIQUE_VIOLATION as e:
-        return Status.ALREADY_EXISTS
-    except DatabaseException as e:
-        return Status.ERROR
-    finally:
-        # will happen any way after try termination or exception handling
-        conn.close()
-    return Status.OK
+                INSERT INTO disks_ram_enhanced(ram_id,disk_id) 
+                VALUES({rID},{dID})
+                """
+            ).format(
+                rID=sql.Literal(ramID),
+                dID=sql.Literal(diskID)
+            )
+            conn.execute(query)
+            conn.commit()
+        except DatabaseException.FOREIGN_KEY_VIOLATION as e:
+            return Status.NOT_EXISTS
+        except DatabaseException.UNIQUE_VIOLATION as e:
+            return Status.ALREADY_EXISTS
+        except DatabaseException as e:
+            return Status.ERROR
+        finally:
+            # will happen any way after try termination or exception handling
+            conn.close()
+        return Status.OK
+
 
 
 def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
@@ -527,6 +528,7 @@ def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
     if rows_effected == 0:
         return Status.NOT_EXISTS
     return Status.OK
+
 
 
 def averageFileSizeOnDisk(diskID: int) -> float:
