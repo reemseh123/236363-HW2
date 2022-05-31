@@ -53,10 +53,10 @@ def createTables():
             file_id INTEGER,
             disk_id INTEGER,
             FOREIGN KEY (file_id) 
-            REFERENCES files(file_id)
+            REFERENCES files(file_id) 
             ON DELETE CASCADE, 
             FOREIGN KEY (disk_id) 
-            REFERENCES disks(disk_id)
+            REFERENCES disks(disk_id) 
             ON DELETE CASCADE,
             PRIMARY KEY(file_id, disk_id)
         );
@@ -64,34 +64,34 @@ def createTables():
             ram_id INTEGER,
             disk_id INTEGER,
             FOREIGN KEY (ram_id) 
-            REFERENCES rams(ram_id)
+            REFERENCES rams(ram_id) 
             ON DELETE CASCADE, 
             FOREIGN KEY (disk_id) 
-            REFERENCES disks(disk_id)
+            REFERENCES disks(disk_id) 
             ON DELETE CASCADE,
             PRIMARY KEY(ram_id, disk_id)
         );
 
         CREATE VIEW saved_files_file_details AS 
-        SELECT saved_files.disk_id, files.*
+        SELECT saved_files.disk_id, files.* 
         FROM saved_files 
         INNER JOIN files 
         ON saved_files.file_id = files.file_id;
 
         CREATE VIEW saved_files_disk_details AS 
-        SELECT saved_files.file_id, disks.*
+        SELECT saved_files.file_id, disks.* 
         FROM saved_files 
         INNER JOIN disks 
         ON saved_files.disk_id = disks.disk_id;
 
         CREATE VIEW disks_ram_enhanced_ram_details AS 
-        SELECT disks_ram_enhanced.disk_id, rams.*
+        SELECT disks_ram_enhanced.disk_id, rams.* 
         FROM disks_ram_enhanced 
         INNER JOIN rams 
         ON disks_ram_enhanced.ram_id = rams.ram_id;
 
         CREATE VIEW disks_ram_enhanced_disk_details AS 
-        SELECT disks_ram_enhanced.ram_id, disks.*
+        SELECT disks_ram_enhanced.ram_id, disks.* 
         FROM disks_ram_enhanced 
         INNER JOIN disks 
         ON disks_ram_enhanced.disk_id = disks.disk_id;
@@ -156,8 +156,16 @@ def addFile(file: File) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("INSERT INTO files(id,type,size) VALUES({id},{type},{size})").format(
-            id=sql.Literal(file.getFileID()), type=sql.Literal(file.getType()), size=sql.Literal(file.getSize()))
+        query = sql.SQL(
+            """
+            INSERT INTO files(id,type,size) 
+            VALUES({id},{type},{size})
+            """
+        ).format(
+            id=sql.Literal(file.getFileID()),
+            type=sql.Literal(file.getType()),
+            size=sql.Literal(file.getSize())
+        )
         conn.execute(query)
         conn.commit()
     except DatabaseException.CHECK_VIOLATION as e:
@@ -178,7 +186,8 @@ def getFileByID(fileID: int) -> File:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM files where fileID = id").format(id=sql.Literal(fileID))
+            "SELECT * FROM files where fileID = id"
+        ).format(id=sql.Literal(fileID))
         conn.commit()
     except DatabaseException as e:
         return File.badFile()
@@ -199,7 +208,10 @@ def deleteFile(file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM files WHERE fileID=id").format(id=sql.Literal(file.getFileID()))
+            "DELETE FROM files WHERE fileID=id"
+        ).format(
+            id=sql.Literal(file.getFileID())
+        )
         rows_effected, _ = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -217,9 +229,16 @@ def addDisk(disk: Disk) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "INSERT INTO disks(id,company,speed,freeSpace,cost) VALUES({id},{company},{speed},{freeSpace},{cost})").format(
-            id=sql.Literal(disk.getDiskID()), company=sql.Literal(disk.getCompany()),
-            speed=sql.Literal(disk.getSpeed()), freeSpace=sql.Literal(disk.getFreeSpace()))
+            """
+            INSERT INTO disks(id,company,speed,freeSpace,cost) 
+            VALUES({id},{company},{speed},{freeSpace},{cost})
+            """
+        ).format(
+            id=sql.Literal(disk.getDiskID()),
+            company=sql.Literal(disk.getCompany()),
+            speed=sql.Literal(disk.getSpeed()),
+            freeSpace=sql.Literal(disk.getFreeSpace())
+        )
         conn.execute(query)
         conn.commit()
     except DatabaseException.CHECK_VIOLATION as e:
@@ -270,8 +289,11 @@ def deleteDisk(diskID: int) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("DELETE FROM disks(id) WHERE diskID = {id}").format(
-            id=sql.Literal(diskID))
+        query = sql.SQL(
+            "DELETE FROM disks(id) WHERE diskID = {id}"
+        ).format(
+            id=sql.Literal(diskID)
+        )
         rows_effected = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -288,8 +310,13 @@ def addRAM(ram: RAM) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("INSERT INTO rams(id,company,size) VALUES({id},{company},{size})").format(
-            id=sql.Literal(ram.getRamID()), company=sql.Literal(ram.getCompany()), size=ram.getSize())
+        query = sql.SQL(
+            "INSERT INTO rams(id,company,size) VALUES({id},{company},{size})"
+        ).format(
+            id=sql.Literal(ram.getRamID()),
+            company=sql.Literal(ram.getCompany()),
+            size=ram.getSize()
+        )
         conn.execute(query)
         conn.commit()
     except DatabaseException.CHECK_VIOLATION as e:
@@ -331,8 +358,11 @@ def deleteRAM(ramID: int) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("DELETE FROM rams(id) WHERE ramID = {id}").format(
-            id=sql.Literal(ramID))
+        query = sql.SQL(
+            "DELETE FROM rams(id) WHERE ramID = {id}"
+        ).format(
+            id=sql.Literal(ramID)
+        )
         rows_effected = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
@@ -354,10 +384,21 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "INSERT INTO disks(id,company,speed,freeSpace,cost) VALUES({id},{company},{speed},{freeSpace},{cost})"
-            "INSERT INTO files(fId,fType,fSize) VALUES({fId},{fType},{fSize})").format(
-            id=sql.Literal(disk.getDiskID()), company=sql.Literal(disk.getCompany()),
-            speed=sql.Literal(disk.getSpeed()), freeSpace=sql.Literal(disk.getFreeSpace()),  fId=sql.Literal(file.getFileID()), fType=sql.Literal(file.getType()), fSize=sql.Literal(file.getSize()))
+            """            
+            INSERT INTO disks(id,company,speed,freeSpace,cost) 
+            VALUES({id},{company},{speed},{freeSpace},{cost});
+            INSERT INTO files(fId,fType,fSize) 
+            VALUES({fId},{fType},{fSize})
+            """
+        ).format(
+            id=sql.Literal(disk.getDiskID()),
+            company=sql.Literal(disk.getCompany()),
+            speed=sql.Literal(disk.getSpeed()),
+            freeSpace=sql.Literal(disk.getFreeSpace()),
+            fId=sql.Literal(file.getFileID()),
+            fType=sql.Literal(file.getType()),
+            fSize=sql.Literal(file.getSize())
+        )
         conn.execute(query)
         conn.commit()
     except DatabaseException.UNIQUE_VIOLATION as e:
