@@ -1,10 +1,10 @@
 from typing import List
-import Utility.DBConnector as Connector
-from Utility.Status import Status
-from Utility.Exceptions import DatabaseException
-from Business.File import File
-from Business.RAM import RAM
-from Business.Disk import Disk
+import hw2_spring2022.Utility.DBConnector as Connector
+from hw2_spring2022.Utility.Status import Status
+from hw2_spring2022.Utility.Exceptions import DatabaseException
+from hw2_spring2022.Business.File import File
+from hw2_spring2022.Business.RAM import RAM
+from hw2_spring2022.Business.Disk import Disk
 from psycopg2 import sql
 
 
@@ -134,17 +134,16 @@ def dropTables():
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = """
-               DROP TABLE files;   
-               DROP TABLE disks;
-               DROP TABLE rams;
-               DROP TABLE saved_files;
-               DROP TABLE disks_ram_enhanced;
-               DROP VIEW saved_files_file_details;
-               DROP VIEW saved_files_disk_details;
-               DROP VIEW disks_ram_enhanced_ram_details;
-               DROP VIEW disks_ram_enhanced_disk_details;
-               """
+        query = sql.SQL("DROP VIEW saved_files_file_details;"
+                        "DROP VIEW saved_files_disk_details;"
+                        "DROP VIEW disks_ram_enhanced_ram_details;"
+                        "DROP VIEW disks_ram_enhanced_disk_details;"
+                        "DROP TABLE disks_ram_enhanced;"
+                        "DROP TABLE saved_files;"
+                        "DROP TABLE files;"
+                        "DROP TABLE disks;"
+                        "DROP TABLE rams;"
+                        )
         conn.execute(query)
         conn.commit()
     finally:
@@ -158,7 +157,7 @@ def addFile(file: File) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            INSERT INTO files(id,type,size) 
+            INSERT INTO files(file_id,type,size) 
             VALUES({id},{type},{size})
             """
         ).format(
@@ -228,16 +227,14 @@ def addDisk(disk: Disk) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL(
-            """
-            INSERT INTO disks(id,company,speed,freeSpace,cost) 
-            VALUES({id},{company},{speed},{freeSpace},{cost})
-            """
-        ).format(
+        query = sql.SQL("INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte)"
+                        " VALUES({id},{company},{speed},{freeSpace},{cost})")\
+            .format(
             id=sql.Literal(disk.getDiskID()),
             company=sql.Literal(disk.getCompany()),
             speed=sql.Literal(disk.getSpeed()),
-            freeSpace=sql.Literal(disk.getFreeSpace())
+            freeSpace=sql.Literal(disk.getFreeSpace()),
+            cost=sql.Literal(disk.getCost())
         )
         conn.execute(query)
         conn.commit()
@@ -274,7 +271,7 @@ def getDiskByID(diskID: int) -> Disk:
         result[0]["manufacturing_company"],
         result[0]["speed"],
         result[0]["free_space"],
-        result[0]["free_spcost_per_byteace"],
+        result[0]["cost_per_byte"],
     )
 
 
@@ -290,11 +287,11 @@ def deleteDisk(diskID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM disks(id) WHERE disk_id = {id}"
+            "DELETE FROM disks WHERE disk_id={id}"
         ).format(
             id=sql.Literal(diskID)
         )
-        rows_effected = conn.execute(query)
+        rows_effected, _ = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
         return Status.ERROR
@@ -311,11 +308,11 @@ def addRAM(ram: RAM) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "INSERT INTO rams(id,company,size) VALUES({id},{company},{size})"
+            "INSERT INTO rams(ram_id,company,size) VALUES({id},{company},{size})"
         ).format(
             id=sql.Literal(ram.getRamID()),
             company=sql.Literal(ram.getCompany()),
-            size=ram.getSize()
+            size=sql.Literal(ram.getSize())
         )
         conn.execute(query)
         conn.commit()
@@ -538,6 +535,19 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     # where this diskID.
     # and aggregate (AVG) (if empty will return NULL - we should convert to zero)
     # catch errors
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "SELECT AVG(size) FROM saved_files_file_details"
+        )
+        rows_effected, out = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return -1
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
     return 0
 
 
