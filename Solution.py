@@ -663,7 +663,27 @@ def getConflictingDisks() -> List[int]:
     # on a1.file_id = a2.file_id
     # WHERE a1.disk_id != a2.disk_id
     # ORDER by a1.disk_id ASC
-    return []
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            "SELECT DISTINCT leftCopy.disk_id"
+            "FROM saved_files leftCopy "
+            "INNER join saved_files rightCopy "
+            "ON leftCopy.file_id = rightCopy.file_id"
+            "WHERE leftCopy.disk_id != rightCopy.disk_id "
+            "ORDER by leftCopy.disk_id ASC"
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return []
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    # need to convert (check the output) (maybe should concatenate result.rows)
+    # something like return [next(iter(row)) for row in result.rows]
+    return result
 
 
 def mostAvailableDisks() -> List[int]:
