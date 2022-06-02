@@ -156,6 +156,8 @@ def dropTables():
                         """
         conn.execute(query)
         conn.commit()
+    except Exception:
+        pass
     finally:
         conn.close()
     pass
@@ -177,11 +179,13 @@ def addFile(file: File) -> Status:
         )
         conn.execute(query)
         conn.commit()
+    except DatabaseException.NOT_NULL_VIOLATION as e:
+        return Status.BAD_PARAMS
     except DatabaseException.CHECK_VIOLATION as e:
         return Status.BAD_PARAMS
     except DatabaseException.UNIQUE_VIOLATION as e:
         return Status.ALREADY_EXISTS
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
@@ -199,7 +203,7 @@ def getFileByID(fileID: int) -> File:
         ).format(id=sql.Literal(fileID))
         conn.commit()
         res, result = conn.execute(query)
-    except DatabaseException as e:
+    except Exception as e:
         return File.badFile()
     finally:
         # will happen any way after try termination or exception handling
@@ -213,24 +217,27 @@ def getFileByID(fileID: int) -> File:
     )
 
 
+
 def deleteFile(file: File) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            UPDATE disks SET free_space=(free_space+{size}) WHERE  
+            UPDATE disks SET free_space=(free_space+{size})
+             WHERE  
              EXISTS (
                  SELECT * FROM saved_files WHERE disk_id IN (SELECT disk_id FROM saved_files WHERE file_id={id}) 
              );
-            DELETE FROM files WHERE file_id={id}"""
+            DELETE FROM files WHERE file_id={id};
+            """
         ).format(
             id=sql.Literal(file.getFileID()),
             size=sql.Literal(file.getSize())
         )
         rows_effected, _ = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         conn.rollback()
         return Status.ERROR
     finally:
@@ -254,11 +261,13 @@ def addDisk(disk: Disk) -> Status:
         )
         conn.execute(query)
         conn.commit()
+    except DatabaseException.NOT_NULL_VIOLATION as e:
+        return Status.BAD_PARAMS
     except DatabaseException.CHECK_VIOLATION as e:
         return Status.BAD_PARAMS
     except DatabaseException.UNIQUE_VIOLATION as e:
         return Status.ALREADY_EXISTS
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
@@ -274,7 +283,7 @@ def getDiskByID(diskID: int) -> Disk:
             "SELECT * FROM disks where disk_id={id} ").format(id=sql.Literal(diskID))
         rows_effected, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return Disk.badDisk()
     finally:
         # will happen any way after try termination or exception handling
@@ -302,13 +311,16 @@ def deleteDisk(diskID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM disks WHERE disk_id={id} "
+            """
+            SELECT * FROM disks WHERE disk_id={id};
+            DELETE FROM disks WHERE disk_id={id};
+            """
         ).format(
             id=sql.Literal(diskID)
         )
         rows_effected, _ = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
@@ -331,11 +343,13 @@ def addRAM(ram: RAM) -> Status:
         )
         conn.execute(query)
         conn.commit()
+    except DatabaseException.NOT_NULL_VIOLATION as e:
+        return Status.BAD_PARAMS
     except DatabaseException.CHECK_VIOLATION as e:
         return Status.BAD_PARAMS
     except DatabaseException.UNIQUE_VIOLATION as e:
         return Status.ALREADY_EXISTS
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
@@ -352,7 +366,7 @@ def getRAMByID(ramID: int) -> RAM:
             "SELECT * FROM rams where ram_id={id} ").format(id=sql.Literal(ramID))
         rows_effected, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return RAM.badRAM()
     finally:
         # will happen any way after try termination or exception handling
@@ -371,13 +385,16 @@ def deleteRAM(ramID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM rams WHERE ram_id={id} "
+            """
+            SELECT * FROM rams WHERE ram_id={id};
+            DELETE FROM rams WHERE ram_id={id};
+            """
         ).format(
             id=sql.Literal(ramID)
         )
-        rows_effected = conn.execute(query)
+        rows_effected,_ = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
@@ -457,7 +474,7 @@ def addFileToDisk(file: File, diskID: int) -> Status:
     except DatabaseException.CHECK_VIOLATION as e:
         conn.rollback()
         return Status.BAD_PARAMS
-    except DatabaseException as e:
+    except Exception as e:
         conn.rollback()
         return Status.ERROR
     finally:
@@ -487,7 +504,7 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
             conn.rollback()
         else:
             conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         conn.rollback()
         conn.close()
         return Status.ERROR
@@ -516,7 +533,7 @@ def addRAMToDisk(ramID: int, diskID: int) -> Status:
         return Status.NOT_EXISTS
     except DatabaseException.UNIQUE_VIOLATION as e:
         return Status.ALREADY_EXISTS
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         conn.close()
@@ -537,7 +554,7 @@ def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
         )
         rows_effected, _ = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
@@ -566,7 +583,7 @@ def averageFileSizeOnDisk(diskID: int) -> float:
         )
         rows_affected, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return -1
     finally:
         # will happen any way after try termination or exception handling
@@ -592,7 +609,7 @@ def totalRAMonDisk(diskID: int) -> int:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return -1
     finally:
         # will happen any way after try termination or exception handling
@@ -621,7 +638,7 @@ def getCostForType(type: str) -> int:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return -1
     finally:
         # will happen any way after try termination or exception handling
@@ -648,7 +665,7 @@ def getFilesCanBeAddedToDisk(diskID: int) -> List[int]:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return []
     finally:
         # will happen any way after try termination or exception handling
@@ -684,7 +701,7 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return []
     finally:
         # will happen any way after try termination or exception handling
@@ -712,7 +729,7 @@ def isCompanyExclusive(diskID: int) -> bool:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return False
     finally:
         # will happen any way after try termination or exception handling
@@ -741,7 +758,7 @@ def getConflictingDisks() -> List[int]:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return []
     finally:
         # will happen any way after try termination or exception handling
