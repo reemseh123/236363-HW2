@@ -567,7 +567,7 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     return result[0]["size_avg"]
 
 
-def diskTotalRAM(diskID: int) -> int:
+def totalRamonDisk(diskID: int) -> int:
     # use the view disks_ram_enhanced_ram_details
     # where this diskID.
     # and aggregate (SUM) (if empty will return NULL - we should convert to zero)
