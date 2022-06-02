@@ -576,9 +576,10 @@ def totalRAMonDisk(diskID: int) -> int:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT COALESCE(SUM(size),0) as size_sum"
-            "FROM disks_ram_enhanced_ram_details "
-            "WHERE disk_id={dID}"
+            """
+            SELECT COALESCE(SUM(size),0) AS size_sum
+            FROM disks_ram_enhanced_ram_details 
+            WHERE disk_id={dID}"""
         ).format(
             dID=sql.Literal(diskID)
         )
@@ -694,10 +695,10 @@ def isCompanyExclusive(diskID: int) -> bool:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * "
-            "FROM rams_And_Disks_Details "
-            "WHERE disk_id = {dID} "
-            "WHERE ram_company != disk_company"
+            """SELECT * 
+            FROM rams_And_Disks_Details
+            WHERE disk_id={dID}
+            WHERE company!=manufacturing_company"""
         ).format(
             dID=sql.Literal(diskID)
         )
