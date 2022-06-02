@@ -664,7 +664,7 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
             "SELECT file_id "
             "FROM files "
             "WHERE size <= (SELECT free_space FROM disks WHERE disk_id = {dID}) "
-            "WHERE size <= ( "
+            "AND size <= ( "
             "SELECT COALESCE(SUM(size),0) as size_sum "
             "FROM disks_ram_enhanced_ram_details "
             "WHERE disk_id={dID} "
@@ -698,7 +698,7 @@ def isCompanyExclusive(diskID: int) -> bool:
             """SELECT * 
             FROM rams_And_Disks_Details 
             WHERE disk_id={dID} 
-            WHERE company!=manufacturing_company """
+            AND company!=manufacturing_company """
         ).format(
             dID=sql.Literal(diskID)
         )
