@@ -218,13 +218,20 @@ def deleteFile(file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "DELETE FROM files WHERE file_id={id} "
+            """
+            UPDATE disks SET free_space=(free_space+{size}) WHERE  
+             EXISTS (
+                 SELECT * FROM saved_files WHERE disk_id IN (SELECT disk_id FROM saved_files WHERE file_id={id}) 
+             );
+            DELETE FROM files WHERE file_id={id}"""
         ).format(
-            id=sql.Literal(file.getFileID())
+            id=sql.Literal(file.getFileID()),
+            size=sql.Literal(file.getSize())
         )
         rows_effected, _ = conn.execute(query)
         conn.commit()
     except DatabaseException as e:
+        conn.rollback()
         return Status.ERROR
     finally:
         # will happen any way after try termination or exception handling
