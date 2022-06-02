@@ -647,7 +647,7 @@ def getFilesCanBeAddedToDisk(diskID: int) -> List[int]:
         conn.close()
     # need to convert (check the output) (maybe should concatenate result.rows)
     # something like return [next(iter(row)) for row in result.rows]
-    return result
+    return [next(iter(row)) for row in result.rows]
 
 
 def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
@@ -739,7 +739,7 @@ def getConflictingDisks() -> List[int]:
         conn.close()
     # need to convert (check the output) (maybe should concatenate result.rows)
     # something like return [next(iter(row)) for row in result.rows]
-    return result
+    return [next(iter(row)) for row in result.rows]
 
 
 def mostAvailableDisks() -> List[int]:
