@@ -7,7 +7,6 @@ from hw2_spring2022.Business.RAM import RAM
 from hw2_spring2022.Business.Disk import Disk
 from psycopg2 import sql
 
-
 # disks_ram_enhanced = pairs of (ram.id,disk.id)
 # saved_files = pairs of (file.id,disk.id)
 # saved_files_file_details = details of saved files only
@@ -97,9 +96,9 @@ def createTables():
                 ON disks_ram_enhanced.disk_id = disks.disk_id;
                 
                 CREATE VIEW rams_And_Disks_Details AS 
-                SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company
-                FROM disks_ram_enhanced_ram_details rDetails
-                JOIN disks_ram_enhanced_disk_details dDetails
+                SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company 
+                FROM disks_ram_enhanced_ram_details rDetails INNER
+                JOIN disks_ram_enhanced_disk_details dDetails 
                 ON rDetails.ram_id = dDetails.ram_id 
                 AND rDetails.disk_id = dDetails.disk_id ;
         """
@@ -248,9 +247,12 @@ def addDisk(disk: Disk) -> Status:
     conn = None
     try:
         conn = Connector.DBConnector()
-        query = sql.SQL("INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte) "
-                        " VALUES({id},{company},{speed},{freeSpace},{cost})") \
-            .format(
+        query = sql.SQL(
+            """
+            INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte)  
+            VALUES({id},{company},{speed},{freeSpace},{cost}) 
+            """
+        ).format(
             id=sql.Literal(disk.getDiskID()),
             company=sql.Literal(disk.getCompany()),
             speed=sql.Literal(disk.getSpeed()),
@@ -625,12 +627,11 @@ def getCostForType(type: str) -> int:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT COALESCE(SUM(size * cost_per_byte),0) as total_cost "
-            "FROM saved_files_file_details fDetails "
-            "JOIN saved_files_disk_details dDetails "
+            "SELECT COALESCE(SUM(fDetails.size * dDetails.cost_per_byte),0) as total_cost "
+            "FROM (SELECT * FROM saved_files_file_details WHERE type = {file_type}) fDetails "
+            "INNER JOIN saved_files_disk_details dDetails "
             "ON fDetails.file_id = dDetails.file_id "
             "AND fDetails.disk_id = dDetails.disk_id "
-            "WHERE file_type = {file_type}"
         ).format(
             file_type=sql.Literal(type)
         )
@@ -721,7 +722,7 @@ def isCompanyExclusive(diskID: int) -> bool:
             """SELECT * 
             FROM rams_And_Disks_Details 
             WHERE disk_id={dID} 
-            AND ram_company!=disk_company """
+            AND ram_company != disk_company """
         ).format(
             dID=sql.Literal(diskID)
         )
@@ -775,12 +776,12 @@ def mostAvailableDisks() -> List[int]:
                 SELECT disk_id, COUNT(*) AS files_count 
                 FROM ( 
                     SELECT disks.disk_id,files.file_id FROM  
-                    disks INNER JOIN files  
-                    ON disks.free_space >= files.size 
-                )
+                    disks LEFT JOIN files  
+                    ON disks.free_space >= COALESCE(files.size,0) 
+                ) available
             GROUP BY disk_id 
             ) file_counts 
-            ON disk.disk_id = file_counts.disk_id 
+            ON disks.disk_id = file_counts.disk_id 
             ORDER BY file_counts.files_count DESC, disks.speed DESC, disks.disk_id ASC 
             LIMIT 5 
             """
@@ -792,7 +793,7 @@ def mostAvailableDisks() -> List[int]:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    return [next(iter(row)["disk_id"]) for row in result.rows]
+    return [next(iter(row)) for row in result.rows]
 
 
 def getCloseFiles(fileID: int) -> List[int]:
@@ -813,7 +814,7 @@ def getCloseFiles(fileID: int) -> List[int]:
         query = sql.SQL(
             """
             SELECT file_id FROM (
-            SELECT files.file_id,COALESCE(relevant_disks_count.count_of_disks,0) as count_of_disks 
+            SELECT other_files.file_id,COALESCE(relevant_disks_count.count_of_disks,0) as count_of_disks 
             FROM ( 
                     SELECT file_id FROM files  
                     WHERE file_id != {fID} 
@@ -827,10 +828,10 @@ def getCloseFiles(fileID: int) -> List[int]:
                 ON saved_files.disk_id = relevant_disk_ids.disk_id 
                 GROUP BY saved_files.file_id 
             ) relevant_disks_count 
-            ON files.file_id = relevant_disks_count.file_id 
+            ON other_files.file_id = relevant_disks_count.file_id 
             ) files_count_data 
             WHERE 2 * count_of_disks >= (SELECT COUNT(*) FROM saved_files WHERE file_id={fID}) 
-            ORDER BY count_of_disks,files.file_id
+            ORDER BY count_of_disks,file_id
             LIMIT 10
             """
         ).format(
