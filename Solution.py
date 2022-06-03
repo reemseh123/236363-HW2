@@ -719,10 +719,17 @@ def isCompanyExclusive(diskID: int) -> bool:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            """SELECT * 
+            """
+            (SELECT disk_id 
             FROM rams_And_Disks_Details 
             WHERE disk_id={dID} 
-            AND ram_company != disk_company """
+            AND ram_company != disk_company) UNION (
+                /* trick to check if disk EXISTS*/
+                SELECT * FROM(VALUES(1)) a
+                WHERE NOT EXISTS (
+                    SELECT * FROM disks WHERE disk_id={dID}  
+                )
+            ) """
         ).format(
             dID=sql.Literal(diskID)
         )
