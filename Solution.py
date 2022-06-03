@@ -72,31 +72,31 @@ def createTables():
                     PRIMARY KEY(ram_id, disk_id)
                 );
                 
-                CREATE VIEW IF NOT EXISTS saved_files_file_details AS 
+                CREATE VIEW saved_files_file_details AS 
                 SELECT saved_files.disk_id, files.* 
                 FROM saved_files 
                 INNER JOIN files 
                 ON saved_files.file_id = files.file_id;
                 
-                CREATE VIEW IF NOT EXISTS saved_files_disk_details AS 
+                CREATE VIEW saved_files_disk_details AS 
                 SELECT saved_files.file_id, disks.* 
                 FROM saved_files 
                 INNER JOIN disks 
                 ON saved_files.disk_id = disks.disk_id;
                 
-                CREATE VIEW IF NOT EXISTS disks_ram_enhanced_ram_details AS 
+                CREATE VIEW disks_ram_enhanced_ram_details AS 
                 SELECT disks_ram_enhanced.disk_id, rams.* 
                 FROM disks_ram_enhanced 
                 INNER JOIN rams 
                 ON disks_ram_enhanced.ram_id = rams.ram_id;
                 
-                CREATE VIEW IF NOT EXISTS disks_ram_enhanced_disk_details AS 
+                CREATE VIEW disks_ram_enhanced_disk_details AS 
                 SELECT disks_ram_enhanced.ram_id, disks.* 
                 FROM disks_ram_enhanced 
                 INNER JOIN disks 
                 ON disks_ram_enhanced.disk_id = disks.disk_id;
                 
-                CREATE VIEW IF NOT EXISTS rams_And_Disks_Details AS 
+                CREATE VIEW rams_And_Disks_Details AS 
                 SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company 
                 FROM disks_ram_enhanced_ram_details rDetails INNER
                 JOIN disks_ram_enhanced_disk_details dDetails 
