@@ -7,6 +7,7 @@ from hw2_spring2022.Business.RAM import RAM
 from hw2_spring2022.Business.Disk import Disk
 from psycopg2 import sql
 
+
 # disks_ram_enhanced = pairs of (ram.id,disk.id)
 # saved_files = pairs of (file.id,disk.id)
 # saved_files_file_details = details of saved files only
@@ -31,24 +32,24 @@ def createTables():
     try:
         conn = Connector.DBConnector()
         query = """
-                CREATE TABLE files(
+                CREATE TABLE IF NOT EXISTS files(
                     file_id INTEGER PRIMARY KEY CHECK (file_id > 0),
                     type TEXT NOT NULL,
                     size INTEGER NOT NULL CHECK (size >= 0)
                  );
-                CREATE TABLE disks(
+                CREATE TABLE IF NOT EXISTS disks(
                     disk_id INTEGER PRIMARY KEY CHECK (disk_id > 0),
                     manufacturing_company TEXT NOT NULL,
                     speed INTEGER NOT NULL CHECK (speed > 0),
                     free_space INTEGER NOT NULL CHECK (free_space >= 0),
                     cost_per_byte INTEGER NOT NULL CHECK (cost_per_byte > 0)
                  );
-                CREATE TABLE rams(
+                CREATE TABLE IF NOT EXISTS rams(
                     ram_id INTEGER PRIMARY KEY CHECK (ram_id > 0),
                     company TEXT NOT NULL,
                     size INTEGER NOT NULL CHECK (size > 0)
                  );
-                CREATE TABLE saved_files(
+                CREATE TABLE IF NOT EXISTS saved_files(
                     file_id INTEGER,
                     disk_id INTEGER,
                     FOREIGN KEY (file_id) 
@@ -59,7 +60,7 @@ def createTables():
                     ON DELETE CASCADE,
                     PRIMARY KEY(file_id, disk_id)
                 );
-                CREATE TABLE disks_ram_enhanced(
+                CREATE TABLE IF NOT EXISTS disks_ram_enhanced(
                     ram_id INTEGER,
                     disk_id INTEGER,
                     FOREIGN KEY (ram_id) 
@@ -71,31 +72,31 @@ def createTables():
                     PRIMARY KEY(ram_id, disk_id)
                 );
                 
-                CREATE VIEW saved_files_file_details AS 
+                CREATE VIEW IF NOT EXISTS saved_files_file_details AS 
                 SELECT saved_files.disk_id, files.* 
                 FROM saved_files 
                 INNER JOIN files 
                 ON saved_files.file_id = files.file_id;
                 
-                CREATE VIEW saved_files_disk_details AS 
+                CREATE VIEW IF NOT EXISTS saved_files_disk_details AS 
                 SELECT saved_files.file_id, disks.* 
                 FROM saved_files 
                 INNER JOIN disks 
                 ON saved_files.disk_id = disks.disk_id;
                 
-                CREATE VIEW disks_ram_enhanced_ram_details AS 
+                CREATE VIEW IF NOT EXISTS disks_ram_enhanced_ram_details AS 
                 SELECT disks_ram_enhanced.disk_id, rams.* 
                 FROM disks_ram_enhanced 
                 INNER JOIN rams 
                 ON disks_ram_enhanced.ram_id = rams.ram_id;
                 
-                CREATE VIEW disks_ram_enhanced_disk_details AS 
+                CREATE VIEW IF NOT EXISTS disks_ram_enhanced_disk_details AS 
                 SELECT disks_ram_enhanced.ram_id, disks.* 
                 FROM disks_ram_enhanced 
                 INNER JOIN disks 
                 ON disks_ram_enhanced.disk_id = disks.disk_id;
                 
-                CREATE VIEW rams_And_Disks_Details AS 
+                CREATE VIEW IF NOT EXISTS rams_And_Disks_Details AS 
                 SELECT rDetails.ram_id,rDetails.disk_id,rDetails.company AS ram_company, dDetails.manufacturing_company AS disk_company 
                 FROM disks_ram_enhanced_ram_details rDetails INNER
                 JOIN disks_ram_enhanced_disk_details dDetails 
@@ -141,16 +142,16 @@ def dropTables():
     try:
         conn = Connector.DBConnector()
         query = """
-                        DROP VIEW saved_files_file_details;
-                        DROP VIEW saved_files_disk_details;
-                        DROP VIEW rams_And_Disks_Details;
-                        DROP VIEW disks_ram_enhanced_ram_details;
-                        DROP VIEW disks_ram_enhanced_disk_details;
-                        DROP TABLE disks_ram_enhanced;
-                        DROP TABLE saved_files;
-                        DROP TABLE files;
-                        DROP TABLE disks;
-                        DROP TABLE rams;
+                        DROP VIEW IF EXISTS saved_files_file_details;
+                        DROP VIEW IF EXISTS saved_files_disk_details;
+                        DROP VIEW IF EXISTS rams_And_Disks_Details;
+                        DROP VIEW IF EXISTS disks_ram_enhanced_ram_details;
+                        DROP VIEW IF EXISTS disks_ram_enhanced_disk_details;
+                        DROP TABLE IF EXISTS disks_ram_enhanced;
+                        DROP TABLE IF EXISTS saved_files;
+                        DROP TABLE IF EXISTS files;
+                        DROP TABLE IF EXISTS disks;
+                        DROP TABLE IF EXISTS rams;
                         """
         conn.execute(query)
         conn.commit()
@@ -795,7 +796,7 @@ def mostAvailableDisks() -> List[int]:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return []
     finally:
         # will happen any way after try termination or exception handling
