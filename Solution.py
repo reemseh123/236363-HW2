@@ -1,10 +1,10 @@
 from typing import List
-import hw2_spring2022.Utility.DBConnector as Connector
-from hw2_spring2022.Utility.Status import Status
-from hw2_spring2022.Utility.Exceptions import DatabaseException
-from hw2_spring2022.Business.File import File
-from hw2_spring2022.Business.RAM import RAM
-from hw2_spring2022.Business.Disk import Disk
+import Utility.DBConnector as Connector
+from Utility.Status import Status
+from Utility.Exceptions import DatabaseException
+from Business.File import File
+from Business.RAM import RAM
+from Business.Disk import Disk
 from psycopg2 import sql
 
 
@@ -223,10 +223,9 @@ def deleteFile(file: File) -> Status:
         query = sql.SQL(
             """
             UPDATE disks SET free_space=(free_space+{size})
-             WHERE  
-             EXISTS (
-                 SELECT * FROM saved_files WHERE disk_id IN (SELECT disk_id FROM saved_files WHERE file_id={id}) 
-             );
+            WHERE  disk_id IN (
+                SELECT disk_id FROM saved_files WHERE file_id={id}
+            );
             DELETE FROM files WHERE file_id={id};
             """
         ).format(
@@ -781,7 +780,7 @@ def mostAvailableDisks() -> List[int]:
             """
             SELECT disks.disk_id,disks.speed,file_counts.files_count FROM 
             disks INNER JOIN (
-                SELECT disk_id, COUNT(*) AS files_count 
+                SELECT disk_id, COUNT(file_id) AS files_count 
                 FROM ( 
                     SELECT disks.disk_id,files.file_id FROM  
                     disks LEFT JOIN files  
@@ -839,6 +838,7 @@ def getCloseFiles(fileID: int) -> List[int]:
             ON other_files.file_id = relevant_disks_count.file_id 
             ) files_count_data 
             WHERE 2 * count_of_disks >= (SELECT COUNT(*) FROM saved_files WHERE file_id={fID}) 
+            AND EXISTS (SELECT * FROM files WHERE file_id={fID}) 
             ORDER BY count_of_disks,file_id
             LIMIT 10
             """
@@ -847,7 +847,7 @@ def getCloseFiles(fileID: int) -> List[int]:
         )
         _, result = conn.execute(query)
         conn.commit()
-    except DatabaseException as e:
+    except Exception as e:
         return []
     finally:
         # will happen any way after try termination or exception handling
