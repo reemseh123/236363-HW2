@@ -1,4 +1,3 @@
-from math import fabs
 from typing import List
 import hw2_spring2022.Utility.DBConnector as Connector
 from hw2_spring2022.Utility.Status import Status
@@ -217,7 +216,6 @@ def getFileByID(fileID: int) -> File:
     )
 
 
-
 def deleteFile(file: File) -> Status:
     conn = None
     try:
@@ -386,13 +384,13 @@ def deleteRAM(ramID: int) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            SELECT * FROM rams WHERE ram_id={id};
+            SELECT * FROM rams WHERE ram_id={id}; 
             DELETE FROM rams WHERE ram_id={id};
             """
         ).format(
             id=sql.Literal(ramID)
         )
-        rows_effected,_ = conn.execute(query)
+        rows_effected, _ = conn.execute(query)
         conn.commit()
     except Exception as e:
         return Status.ERROR
@@ -602,7 +600,7 @@ def totalRAMonDisk(diskID: int) -> int:
         query = sql.SQL(
             """
             SELECT COALESCE(SUM(size),0) AS size_sum 
-            FROM disks_ram_enhanced_ram_details 
+            FROM disks_ram_enhanced_ram_details  
             WHERE disk_id={dID}"""
         ).format(
             dID=sql.Literal(diskID)
@@ -749,11 +747,11 @@ def getConflictingDisks() -> List[int]:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            SELECT DISTINCT leftCopy.disk_id
+            SELECT DISTINCT leftCopy.disk_id 
             FROM saved_files leftCopy 
-            INNER join saved_files rightCopy
-            ON leftCopy.file_id=rightCopy.file_id
-            WHERE leftCopy.disk_id!=rightCopy.disk_id
+            INNER join saved_files rightCopy 
+            ON leftCopy.file_id=rightCopy.file_id 
+            WHERE leftCopy.disk_id!=rightCopy.disk_id 
             ORDER by leftCopy.disk_id ASC"""
         )
         _, result = conn.execute(query)
@@ -763,18 +761,38 @@ def getConflictingDisks() -> List[int]:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    # need to convert (check the output) (maybe should concatenate result.rows)
-    # something like return [next(iter(row)) for row in result.rows]
     return [next(iter(row)) for row in result.rows]
 
 
 def mostAvailableDisks() -> List[int]:
-    # (nested queries -
-    # using the subquery used in
-    # getFilesCanBeAddedToDisk (with little modification - maybe)
-    # without LIMIT)
-    # SIMPLY BY FREE SPACE ( ORDER ACCORDINGLY)
-    return []
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            """
+            SELECT disks.disk_id,disks.speed,file_counts.files_count FROM 
+            disks INNER JOIN (
+                SELECT disk_id, COUNT(*) AS files_count 
+                FROM ( 
+                    SELECT disks.disk_id,files.file_id FROM  
+                    disks INNER JOIN files  
+                    ON disks.free_space >= files.size 
+                )
+            GROUP BY disk_id 
+            ) file_counts 
+            ON disk.disk_id = file_counts.disk_id 
+            ORDER BY file_counts.files_count DESC, disks.speed DESC, disks.disk_id ASC 
+            LIMIT 5 
+            """
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return []
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    return [next(iter(row)["disk_id"]) for row in result.rows]
 
 
 def getCloseFiles(fileID: int) -> List[int]:
@@ -784,15 +802,45 @@ def getCloseFiles(fileID: int) -> List[int]:
     # join saved_files with relevant_disk_ids on disk_id
     # now we have table with files saved on the relevant disks.
     # group by file_id aggregate COUNT disk_id. = call it relevant_disks_count
-
-    ##############################################
     # join relevant_disks_count with files on file id, project only file_id, countOFDisks.
     # convert NULLs to zeroes
     # order by ID
     # get top 10 with the condition >= x/2
     # when x is the result of sub-query that returns the disks count of this file_id.
-
-    return []
-    # where (after grouping) where count > 50% ... (exclude this file_id)
-    # in case the file is not saved - return top 10 from files.
-    # (we can relate to the above as subquery, the ask if exists...)
+    conn = None
+    try:
+        conn = Connector.DBConnector()
+        query = sql.SQL(
+            """
+            SELECT file_id FROM (
+            SELECT files.file_id,COALESCE(relevant_disks_count.count_of_disks,0) as count_of_disks 
+            FROM ( 
+                    SELECT file_id FROM files  
+                    WHERE file_id != {fID} 
+                ) other_files LEFT JOIN ( 
+                SELECT saved_files.file_id, COUNT(*) AS count_of_disks 
+                FROM saved_files INNER JOIN (
+                    SELECT disk_id 
+                    FROM saved_files 
+                    WHERE file_id = {fID} 
+                ) relevant_disk_ids 
+                ON saved_files.disk_id = relevant_disk_ids.disk_id 
+                GROUP BY saved_files.file_id 
+            ) relevant_disks_count 
+            ON files.file_id = relevant_disks_count.file_id 
+            ) files_count_data 
+            WHERE 2 * count_of_disks >= (SELECT COUNT(*) FROM saved_files WHERE file_id={fID}) 
+            ORDER BY count_of_disks,files.file_id
+            LIMIT 10
+            """
+        ).format(
+            fID=sql.Literal(fileID)
+        )
+        _, result = conn.execute(query)
+        conn.commit()
+    except DatabaseException as e:
+        return []
+    finally:
+        # will happen any way after try termination or exception handling
+        conn.close()
+    return [next(iter(row)) for row in result.rows]
