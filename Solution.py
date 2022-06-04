@@ -550,7 +550,7 @@ def averageFileSizeOnDisk(diskID: int) -> float:
     return result[0]["size_avg"]
 
 
-def totalRAMonDisk(diskID: int) -> int:
+def diskTotalRAM(diskID: int) -> int:
     conn = None
     try:
         conn = Connector.DBConnector()
