@@ -8,13 +8,6 @@ from Business.Disk import Disk
 from psycopg2 import sql
 
 
-# disks_ram_enhanced = pairs of (ram.id,disk.id)
-# saved_files = pairs of (file.id,disk.id)
-# saved_files_file_details = details of saved files only
-# saved_files_disk_details = details of used(contains at least one file) disks only
-# disks_ram_enhanced_ram_details =
-# disks_ram_enhanced_disk_details =
-
 def mapToFile(fileID: int, type: str, size: int) -> File:
     return File(fileID, type, size)
 
@@ -105,18 +98,8 @@ def createTables():
         """
         conn.execute(query)
         conn.commit()
-    except DatabaseException.ConnectionInvalid as e:
-        print(e)
-    except DatabaseException.NOT_NULL_VIOLATION as e:
-        print(e)
-    except DatabaseException.CHECK_VIOLATION as e:
-        print(e)
-    except DatabaseException.UNIQUE_VIOLATION as e:
-        print(e)
-    except DatabaseException.FOREIGN_KEY_VIOLATION as e:
-        print(e)
     except Exception as e:
-        print(e)
+        conn.rollback()
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
@@ -133,6 +116,8 @@ def clearTables():
         """
         conn.execute(query)
         conn.commit()
+    except Exception:
+        conn.rollback()
     finally:
         conn.close()
 
@@ -156,7 +141,7 @@ def dropTables():
         conn.execute(query)
         conn.commit()
     except Exception:
-        pass
+        conn.rollback()
     finally:
         conn.close()
     pass
@@ -299,13 +284,6 @@ def getDiskByID(diskID: int) -> Disk:
     )
 
 
-# not sure about this
-#   query = sql.SQL("INSERT INTO Users(id, name) VALUES({id}, {username})").format(id=sql.Literal(ID)
-#   username=sql.Literal(name))
-
-# query = sql.SQL("DELETE FROM disks WHERE diskID = {0}").format(id=sql.Literal(diskID))#
-
-
 def deleteDisk(diskID: int) -> Status:
     conn = None
     try:
@@ -404,10 +382,6 @@ def deleteRAM(ramID: int) -> Status:
     return Status.OK
 
 
-# add using query: file , then disk (assume they aren't exist)
-# catch errors with rollback.
-
-
 def addDiskAndFile(disk: Disk, file: File) -> Status:
     conn = None
     try:
@@ -441,14 +415,7 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
     return Status.OK
 
 
-# saved_files = pairs of (file.id,disk.id)\ **not sure if this the way to sub the size**
-# SUB files.size FROM disks.free_space WHERE disk_id = dId
-
-
 def addFileToDisk(file: File, diskID: int) -> Status:
-    # Insert into saved_files.(FK violation , UNIQUE violation)
-    # update free space. (CHECK violation)
-    # catch errors with rollback.
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -484,9 +451,6 @@ def addFileToDisk(file: File, diskID: int) -> Status:
 
 
 def removeFileFromDisk(file: File, diskID: int) -> Status:
-    # remove from saved_files
-    # update free space
-    # catch errors
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -513,8 +477,6 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
 
 
 def addRAMToDisk(ramID: int, diskID: int) -> Status:
-    # Insert into disks_ram_enhanced
-    # catch errors
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -541,8 +503,6 @@ def addRAMToDisk(ramID: int, diskID: int) -> Status:
 
 
 def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
-    # remove from disks_ram_enhanced
-    # catch errors
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -565,10 +525,6 @@ def removeRAMFromDisk(ramID: int, diskID: int) -> Status:
 
 
 def averageFileSizeOnDisk(diskID: int) -> float:
-    # use the view saved_files_file_details
-    # where this diskID.
-    # and aggregate (AVG) (if empty will return NULL - we should convert to zero)
-    # catch errors
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -592,10 +548,6 @@ def averageFileSizeOnDisk(diskID: int) -> float:
 
 
 def totalRAMonDisk(diskID: int) -> int:
-    # use the view disks_ram_enhanced_ram_details
-    # where this diskID.
-    # and aggregate (SUM) (if empty will return NULL - we should convert to zero)
-    # catch errors
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -618,11 +570,6 @@ def totalRAMonDisk(diskID: int) -> int:
 
 
 def getCostForType(type: str) -> int:
-    # join view saved_files_file_details where this Type
-    # with vew saved_files_disk_details where this Type
-    # ON pair key (file_id,disk_id)
-    # where Type
-    # then agg (SUM)(if empty will return NULL - we should convert to zero)
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -646,9 +593,6 @@ def getCostForType(type: str) -> int:
 
 
 def getFilesCanBeAddedToDisk(diskID: int) -> List[int]:
-    # FILES ORDERED By SIZE THEN BY ID'S
-    # where size <= freespace of this disk (sub-query)
-    # LIMIT 5
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -669,18 +613,10 @@ def getFilesCanBeAddedToDisk(diskID: int) -> List[int]:
     finally:
         # will happen any way after try termination or exception handling
         conn.close()
-    # need to convert (check the output) (maybe should concatenate result.rows)
-    # something like return [next(iter(row)) for row in result.rows]
     return [next(iter(row)) for row in result.rows]
 
 
 def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
-    # check if we can use "diskTotalRAM" func.
-    # if not, then
-    # FILES ORDERED By SIZE THEN BY ID'S
-    # where size <= freespace of this disk (sub-query)
-    # where size <= sum of... (same sub-query used in the func "diskTotalRAM")
-    # LIMIT 5
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -709,12 +645,6 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
 
 
 def isCompanyExclusive(diskID: int) -> bool:
-    # join the Ram VIEWS (SAME AS FILES VIEWS)
-    #  where this disk_id
-    # SELECT * ... where manufacturing_company != company
-    # if the length of the result is zero then true.
-    # WARNING : check the empty case
-    # means when no rams associated with the disk.(should return true)
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -724,7 +654,7 @@ def isCompanyExclusive(diskID: int) -> bool:
             FROM rams_And_Disks_Details 
             WHERE disk_id={dID} 
             AND ram_company != disk_company) UNION (
-                /* trick to check if disk EXISTS*/
+                /* trick to check if disk EXISTS */
                 SELECT * FROM(VALUES(1)) a
                 WHERE NOT EXISTS (
                     SELECT * FROM disks WHERE disk_id={dID}  
@@ -744,12 +674,6 @@ def isCompanyExclusive(diskID: int) -> bool:
 
 
 def getConflictingDisks() -> List[int]:
-    # SELECT DISTINCT a1.disk_id
-    # FROM saved_files a1
-    # INNER join saved_files a2
-    # on a1.file_id = a2.file_id
-    # WHERE a1.disk_id != a2.disk_id
-    # ORDER by a1.disk_id ASC
     conn = None
     try:
         conn = Connector.DBConnector()
@@ -804,43 +728,35 @@ def mostAvailableDisks() -> List[int]:
 
 
 def getCloseFiles(fileID: int) -> List[int]:
-    # files where this file id
-    # SELECT disk_id from saved_files where this file_id = relevant_disk_ids
-
-    # join saved_files with relevant_disk_ids on disk_id
-    # now we have table with files saved on the relevant disks.
-    # group by file_id aggregate COUNT disk_id. = call it relevant_disks_count
-    # join relevant_disks_count with files on file id, project only file_id, countOFDisks.
-    # convert NULLs to zeroes
-    # order by ID
-    # get top 10 with the condition >= x/2
-    # when x is the result of sub-query that returns the disks count of this file_id.
     conn = None
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
             SELECT file_id FROM (
-            SELECT other_files.file_id,COALESCE(relevant_disks_count.count_of_disks,0) as count_of_disks 
-            FROM ( 
-                    SELECT file_id FROM files  
-                    WHERE file_id != {fID} 
-                ) other_files LEFT JOIN ( 
-                SELECT saved_files.file_id, COUNT(*) AS count_of_disks 
-                FROM saved_files INNER JOIN (
-                    SELECT disk_id 
-                    FROM saved_files 
-                    WHERE file_id = {fID} 
-                ) relevant_disk_ids 
-                ON saved_files.disk_id = relevant_disk_ids.disk_id 
-                GROUP BY saved_files.file_id 
-            ) relevant_disks_count 
-            ON other_files.file_id = relevant_disks_count.file_id 
-            ) files_count_data 
-            WHERE 2 * count_of_disks >= (SELECT COUNT(*) FROM saved_files WHERE file_id={fID}) 
-            AND EXISTS (SELECT * FROM files WHERE file_id={fID}) 
-            ORDER BY count_of_disks,file_id
-            LIMIT 10
+                SELECT * FROM (
+                    SELECT other_files.file_id,COALESCE(relevant_disks_count.count_of_disks,0) as count_of_disks 
+                    FROM ( 
+                        SELECT file_id FROM files  
+                        WHERE file_id != {fID} 
+                        ) other_files LEFT JOIN ( 
+                        SELECT saved_files.file_id, COUNT(*) AS count_of_disks 
+                        FROM saved_files INNER JOIN (
+                            SELECT disk_id 
+                            FROM saved_files 
+                            WHERE file_id = {fID} 
+                        ) relevant_disk_ids 
+                        ON saved_files.disk_id = relevant_disk_ids.disk_id 
+                        GROUP BY saved_files.file_id 
+                    ) relevant_disks_count 
+                    ON other_files.file_id = relevant_disks_count.file_id 
+                ) files_count_data 
+                WHERE 2 * count_of_disks >= (SELECT COUNT(*) FROM saved_files WHERE file_id={fID}) 
+                AND EXISTS (SELECT * FROM files WHERE file_id={fID}) 
+                ORDER BY count_of_disks DESC 
+                LIMIT 10
+                ) ordered_by_count_DESC
+            ORDER BY file_id
             """
         ).format(
             fID=sql.Literal(fileID)
