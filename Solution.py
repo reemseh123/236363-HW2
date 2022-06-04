@@ -621,16 +621,18 @@ def getFilesCanBeAddedToDiskAndRAM(diskID: int) -> List[int]:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT file_id "
-            "FROM files "
-            "WHERE size <= (SELECT free_space FROM disks WHERE disk_id={dID}) "
-            "AND size <= ( "
-            "SELECT COALESCE(SUM(size),0) as size_sum "
-            "FROM disks_ram_enhanced_ram_details "
-            "WHERE disk_id={dID} "
-            ") "
-            "ORDER BY file_id ASC "
-            "LIMIT 5 "
+            """
+            SELECT file_id 
+            FROM files 
+            WHERE size <= (SELECT free_space FROM disks WHERE disk_id={dID}) 
+            AND size <= ( 
+                SELECT COALESCE(SUM(size),0) as size_sum 
+                FROM disks_ram_enhanced_ram_details 
+                WHERE disk_id={dID} 
+                ) 
+            ORDER BY file_id ASC 
+            LIMIT 5 
+            """
         ).format(
             dID=sql.Literal(diskID)
         )
@@ -650,18 +652,18 @@ def isCompanyExclusive(diskID: int) -> bool:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            (
+            ( 
                 SELECT disk_id 
                 FROM rams_And_Disks_Details 
                 WHERE disk_id={dID} 
-               AND ram_company != disk_company
-            ) UNION (
+               AND ram_company != disk_company 
+            ) UNION ( 
                 /* trick to handle disk NOT EXIST in the DB*/
                 SELECT * 
-                FROM (VALUES(1)) dummy_row
-                WHERE NOT EXISTS (
+                FROM (VALUES(1)) dummy_row 
+                WHERE NOT EXISTS ( 
                 SELECT * FROM disks WHERE disk_id={dID}  
-               )
+               ) 
             )
             """
         ).format(
