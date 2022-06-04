@@ -682,9 +682,10 @@ def getConflictingDisks() -> List[int]:
             SELECT DISTINCT leftCopy.disk_id 
             FROM saved_files leftCopy 
             INNER join saved_files rightCopy 
-            ON leftCopy.file_id=rightCopy.file_id 
-            WHERE leftCopy.disk_id!=rightCopy.disk_id 
-            ORDER by leftCopy.disk_id ASC"""
+            ON leftCopy.file_id = rightCopy.file_id 
+            WHERE leftCopy.disk_id != rightCopy.disk_id 
+            ORDER by leftCopy.disk_id ASC
+            """
         )
         _, result = conn.execute(query)
         conn.commit()
