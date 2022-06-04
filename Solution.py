@@ -110,9 +110,9 @@ def clearTables():
     try:
         conn = Connector.DBConnector()
         query = """
-        DELETE FROM files;   
-        DELETE FROM disks;
-        DELETE FROM rams;
+        DELETE FROM files; 
+        DELETE FROM disks; 
+        DELETE FROM rams; 
         """
         conn.execute(query)
         conn.commit()
@@ -127,16 +127,16 @@ def dropTables():
     try:
         conn = Connector.DBConnector()
         query = """
-                        DROP VIEW IF EXISTS saved_files_file_details;
-                        DROP VIEW IF EXISTS saved_files_disk_details;
-                        DROP VIEW IF EXISTS rams_And_Disks_Details;
-                        DROP VIEW IF EXISTS disks_ram_enhanced_ram_details;
-                        DROP VIEW IF EXISTS disks_ram_enhanced_disk_details;
-                        DROP TABLE IF EXISTS disks_ram_enhanced;
-                        DROP TABLE IF EXISTS saved_files;
-                        DROP TABLE IF EXISTS files;
-                        DROP TABLE IF EXISTS disks;
-                        DROP TABLE IF EXISTS rams;
+                        DROP VIEW IF EXISTS saved_files_file_details; 
+                        DROP VIEW IF EXISTS saved_files_disk_details; 
+                        DROP VIEW IF EXISTS rams_And_Disks_Details; 
+                        DROP VIEW IF EXISTS disks_ram_enhanced_ram_details; 
+                        DROP VIEW IF EXISTS disks_ram_enhanced_disk_details; 
+                        DROP TABLE IF EXISTS disks_ram_enhanced; 
+                        DROP TABLE IF EXISTS saved_files; 
+                        DROP TABLE IF EXISTS files; 
+                        DROP TABLE IF EXISTS disks; 
+                        DROP TABLE IF EXISTS rams; 
                         """
         conn.execute(query)
         conn.commit()
@@ -207,11 +207,11 @@ def deleteFile(file: File) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            UPDATE disks SET free_space=(free_space+{size})
+            UPDATE disks SET free_space = (free_space+{size})
             WHERE  disk_id IN (
-                SELECT disk_id FROM saved_files WHERE file_id={id}
+                SELECT disk_id FROM saved_files WHERE file_id={id} 
             );
-            DELETE FROM files WHERE file_id={id};
+            DELETE FROM files WHERE file_id={id}; 
             """
         ).format(
             id=sql.Literal(file.getFileID()),
@@ -290,7 +290,7 @@ def deleteDisk(diskID: int) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            SELECT * FROM disks WHERE disk_id={id};
+            SELECT * FROM disks WHERE disk_id={id}; 
             DELETE FROM disks WHERE disk_id={id};
             """
         ).format(
@@ -365,7 +365,7 @@ def deleteRAM(ramID: int) -> Status:
         query = sql.SQL(
             """
             SELECT * FROM rams WHERE ram_id={id}; 
-            DELETE FROM rams WHERE ram_id={id};
+            DELETE FROM rams WHERE ram_id={id}; 
             """
         ).format(
             id=sql.Literal(ramID)
@@ -387,10 +387,12 @@ def addDiskAndFile(disk: Disk, file: File) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte) "
-            "VALUES({id},{company},{speed},{freeSpace},{cost}); "
-            "INSERT INTO files(file_id,type,size) "
-            "VALUES({fId},{fType},{fSize}); "
+            """
+            INSERT INTO disks(disk_id,manufacturing_company,speed,free_space,cost_per_byte) 
+            VALUES({id},{company},{speed},{freeSpace},{cost}); 
+            INSERT INTO files(file_id,type,size) 
+            VALUES({fId},{fType},{fSize}); 
+            """
         ).format(
             id=sql.Literal(disk.getDiskID()),
             company=sql.Literal(disk.getCompany()),
@@ -421,9 +423,8 @@ def addFileToDisk(file: File, diskID: int) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-                    INSERT INTO saved_files(file_id,disk_id)  
-                    VALUES({fId},{dId}); 
-                    UPDATE disks SET free_space=(free_space-{size}) WHERE disk_id={dId}; 
+            INSERT INTO saved_files(file_id,disk_id) VALUES({fId},{dId}); 
+            UPDATE disks SET free_space=(free_space-{size}) WHERE disk_id={dId}; 
             """
         ).format(
             fId=sql.Literal(file.getFileID()),
@@ -455,9 +456,11 @@ def removeFileFromDisk(file: File, diskID: int) -> Status:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT * FROM saved_files where file_id={fID} AND disk_id={dID}; "
-            "UPDATE disks SET free_space=(free_space+{size}) WHERE disk_id={dID}; "
-            "DELETE FROM saved_files WHERE file_id={fID} AND disk_id={dID}; "
+            """
+            SELECT * FROM saved_files where file_id={fID} AND disk_id={dID}; 
+            UPDATE disks SET free_space=(free_space+{size}) WHERE disk_id={dID}; 
+            DELETE FROM saved_files WHERE file_id={fID} AND disk_id={dID}; 
+            """
         ).format(
             fID=sql.Literal(file.getFileID()),
             dID=sql.Literal(diskID),
@@ -482,8 +485,8 @@ def addRAMToDisk(ramID: int, diskID: int) -> Status:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-                    INSERT INTO disks_ram_enhanced(ram_id,disk_id)  
-                    VALUES({rID},{dID}) 
+            INSERT INTO disks_ram_enhanced(ram_id,disk_id)  
+            VALUES({rID},{dID}) 
             """
         ).format(
             rID=sql.Literal(ramID),
@@ -532,7 +535,7 @@ def averageFileSizeOnDisk(diskID: int) -> float:
             """
             SELECT COALESCE(AVG(size),0) as size_avg 
             FROM saved_files_file_details 
-            WHERE disk_id={dID}
+            WHERE disk_id={dID} 
             """
         ).format(
             dID=sql.Literal(diskID)
@@ -555,7 +558,8 @@ def totalRAMonDisk(diskID: int) -> int:
             """
             SELECT COALESCE(SUM(size),0) AS size_sum 
             FROM disks_ram_enhanced_ram_details  
-            WHERE disk_id={dID}"""
+            WHERE disk_id={dID} 
+            """
         ).format(
             dID=sql.Literal(diskID)
         )
@@ -574,11 +578,15 @@ def getCostForType(type: str) -> int:
     try:
         conn = Connector.DBConnector()
         query = sql.SQL(
-            "SELECT COALESCE(SUM(fDetails.size * dDetails.cost_per_byte),0) as total_cost "
-            "FROM (SELECT * FROM saved_files_file_details WHERE type = {file_type}) fDetails "
-            "INNER JOIN saved_files_disk_details dDetails "
-            "ON fDetails.file_id = dDetails.file_id "
-            "AND fDetails.disk_id = dDetails.disk_id "
+            """
+            SELECT COALESCE(SUM(fDetails.size * dDetails.cost_per_byte),0) as total_cost 
+            FROM (
+                SELECT * FROM saved_files_file_details 
+                WHERE type = {file_type}
+            ) fDetails 
+            INNER JOIN saved_files_disk_details dDetails 
+            ON fDetails.file_id = dDetails.file_id AND fDetails.disk_id = dDetails.disk_id 
+            """
         ).format(
             file_type=sql.Literal(type)
         )
@@ -600,9 +608,10 @@ def getFilesCanBeAddedToDisk(diskID: int) -> List[int]:
             """
             SELECT file_id 
             FROM files 
-            WHERE size<=(SELECT free_space FROM disks WHERE disk_id={dID})
-            ORDER BY file_id DESC
-            LIMIT 5 """
+            WHERE size <= (SELECT free_space FROM disks WHERE disk_id={dID}) 
+            ORDER BY file_id DESC 
+            LIMIT 5 
+            """
         ).format(
             dID=sql.Literal(diskID)
         )
