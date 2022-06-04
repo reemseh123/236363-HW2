@@ -702,15 +702,15 @@ def mostAvailableDisks() -> List[int]:
         conn = Connector.DBConnector()
         query = sql.SQL(
             """
-            SELECT disks.disk_id,disks.speed,file_counts.files_count FROM 
-            disks INNER JOIN (
+            SELECT disks.disk_id,disks.speed,file_counts.files_count 
+            FROM disks INNER JOIN (
                 SELECT disk_id, COUNT(file_id) AS files_count 
                 FROM ( 
                     SELECT disks.disk_id,files.file_id FROM  
                     disks LEFT JOIN files  
                     ON disks.free_space >= COALESCE(files.size,0) 
-                ) available
-            GROUP BY disk_id 
+                ) files_can_be_saved_on_disk
+                GROUP BY disk_id 
             ) file_counts 
             ON disks.disk_id = file_counts.disk_id 
             ORDER BY file_counts.files_count DESC, disks.speed DESC, disks.disk_id ASC 
