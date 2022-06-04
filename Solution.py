@@ -127,17 +127,17 @@ def dropTables():
     try:
         conn = Connector.DBConnector()
         query = """
-                        DROP VIEW IF EXISTS saved_files_file_details; 
-                        DROP VIEW IF EXISTS saved_files_disk_details; 
-                        DROP VIEW IF EXISTS rams_And_Disks_Details; 
-                        DROP VIEW IF EXISTS disks_ram_enhanced_ram_details; 
-                        DROP VIEW IF EXISTS disks_ram_enhanced_disk_details; 
-                        DROP TABLE IF EXISTS disks_ram_enhanced; 
-                        DROP TABLE IF EXISTS saved_files; 
-                        DROP TABLE IF EXISTS files; 
-                        DROP TABLE IF EXISTS disks; 
-                        DROP TABLE IF EXISTS rams; 
-                        """
+                    DROP VIEW IF EXISTS saved_files_file_details; 
+                    DROP VIEW IF EXISTS saved_files_disk_details; 
+                    DROP VIEW IF EXISTS rams_And_Disks_Details; 
+                    DROP VIEW IF EXISTS disks_ram_enhanced_ram_details; 
+                    DROP VIEW IF EXISTS disks_ram_enhanced_disk_details; 
+                    DROP TABLE IF EXISTS disks_ram_enhanced; 
+                    DROP TABLE IF EXISTS saved_files; 
+                    DROP TABLE IF EXISTS files; 
+                    DROP TABLE IF EXISTS disks; 
+                    DROP TABLE IF EXISTS rams; 
+                """
         conn.execute(query)
         conn.commit()
     except Exception:
@@ -769,7 +769,7 @@ def getCloseFiles(fileID: int) -> List[int]:
                 ) files_count_data 
                 WHERE 2 * count_of_disks >= (SELECT COUNT(*) FROM saved_files WHERE file_id={fID}) 
                 AND EXISTS (SELECT * FROM files WHERE file_id={fID}) 
-                ORDER BY count_of_disks DESC 
+                ORDER BY count_of_disks DESC, file_id
                 LIMIT 10
                 ) ordered_by_count_DESC
             ORDER BY file_id
